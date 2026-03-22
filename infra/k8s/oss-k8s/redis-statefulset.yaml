@@ -1,0 +1,124 @@
+# Redis StatefulSet — Architecture #5 (OSS Redis on k8s)
+#
+# Deploys 3 Redis pods: 1 primary + 2 replicas.
+# Pod-0 starts as primary; pods 1-2 replicate from pod-0.
+# Sentinel handles promotion if pod-0 fails.
+#
+# Resources per pod: 1 vCPU, 2 GB RAM (topology matrix)
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-headless
+  namespace: redis-oss
+  labels:
+    app: redis
+    app.kubernetes.io/part-of: locust-poc-lab
+spec:
+  clusterIP: None
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+      name: redis
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: redis-oss
+  labels:
+    app: redis
+    app.kubernetes.io/part-of: locust-poc-lab
+spec:
+  type: ClusterIP
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+      name: redis
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: redis-oss
+  labels:
+    app: redis
+    app.kubernetes.io/part-of: locust-poc-lab
+    lab/architecture: "5-oss-k8s"
+spec:
+  serviceName: redis-headless
+  replicas: 3
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+        app.kubernetes.io/part-of: locust-poc-lab
+    spec:
+      initContainers:
+        - name: init-redis
+          image: redis:7.4
+          command:
+            - bash
+            - -c
+            - |
+              set -ex
+              cp /mnt/config/redis.conf /mnt/data/redis.conf
+              HOSTNAME=$(hostname)
+              ORDINAL=${HOSTNAME##*-}
+              if [ "$ORDINAL" != "0" ]; then
+                echo "replicaof redis-0.redis-headless.redis-oss.svc.cluster.local 6379" >> /mnt/data/redis.conf
+              fi
+          volumeMounts:
+            - name: config
+              mountPath: /mnt/config
+            - name: data
+              mountPath: /mnt/data
+      containers:
+        - name: redis
+          image: redis:7.4
+          command: ["redis-server", "/data/redis.conf"]
+          ports:
+            - containerPort: 6379
+              name: redis
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: redis-config
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
+

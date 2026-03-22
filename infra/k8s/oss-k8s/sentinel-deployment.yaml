@@ -1,0 +1,96 @@
+# Sentinel Deployment — Architecture #5 (OSS Redis on k8s)
+#
+# Deploys 3 Sentinel pods that monitor the Redis primary
+# and handle automatic failover.
+#
+# Sentinels are deployed as a Deployment (not StatefulSet) because
+# they don't need stable storage or network identity.
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-sentinel
+  namespace: redis-oss
+  labels:
+    app: redis-sentinel
+    app.kubernetes.io/part-of: locust-poc-lab
+spec:
+  type: ClusterIP
+  selector:
+    app: redis-sentinel
+  ports:
+    - port: 26379
+      targetPort: 26379
+      name: sentinel
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-sentinel
+  namespace: redis-oss
+  labels:
+    app: redis-sentinel
+    app.kubernetes.io/part-of: locust-poc-lab
+    lab/architecture: "5-oss-k8s"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: redis-sentinel
+  template:
+    metadata:
+      labels:
+        app: redis-sentinel
+        app.kubernetes.io/part-of: locust-poc-lab
+    spec:
+      initContainers:
+        - name: init-sentinel
+          image: redis:7.4
+          command:
+            - bash
+            - -c
+            - |
+              set -ex
+              cp /mnt/config/sentinel.conf /mnt/data/sentinel.conf
+              # Ensure the sentinel config is writable (Sentinel modifies its own config)
+              chmod 666 /mnt/data/sentinel.conf
+          volumeMounts:
+            - name: config
+              mountPath: /mnt/config
+            - name: sentinel-data
+              mountPath: /mnt/data
+      containers:
+        - name: sentinel
+          image: redis:7.4
+          command: ["redis-sentinel", "/data/sentinel.conf"]
+          ports:
+            - containerPort: 26379
+              name: sentinel
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: sentinel-data
+              mountPath: /data
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "-p", "26379", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "-p", "26379", "ping"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: redis-config
+        - name: sentinel-data
+          emptyDir: {}
+

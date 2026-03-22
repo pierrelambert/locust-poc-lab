@@ -3,11 +3,21 @@
 .PHONY: oss-sentinel-up oss-sentinel-down oss-sentinel-status
 .PHONY: oss-cluster-up oss-cluster-down oss-cluster-status
 .PHONY: vm-up vm-down vm-status
+.PHONY: k3d-up k3d-down
+.PHONY: k8s-re-up k8s-re-down k8s-re-status
+.PHONY: k8s-oss-up k8s-oss-down k8s-oss-status
+.PHONY: k8s-up k8s-down k8s-status
 
 COMPOSE = docker compose
 
+# --- k8s Configuration ---
+RE_OPERATOR_VERSION ?= v7.8.2-6
+RE_OPERATOR_BUNDLE ?= https://raw.githubusercontent.com/RedisLabs/redis-enterprise-k8s-docs/$(RE_OPERATOR_VERSION)/bundle.yaml
+RE_NAMESPACE ?= redis-enterprise
+OSS_NAMESPACE ?= redis-oss
+
 help: ## Show available targets
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-25s\033[0m %s\n", $$1, $$2}'
 
 setup: ## Install Python dependencies
@@ -56,3 +66,75 @@ vm-up: re-up oss-sentinel-up oss-cluster-up ## Start all VM-path stacks
 vm-down: re-down oss-sentinel-down oss-cluster-down ## Stop all VM-path stacks
 vm-status: re-status oss-sentinel-status oss-cluster-status ## Status of all VM-path stacks
 
+
+
+# ── k3d Cluster ────────────────────────────────────────────────────
+k3d-up: ## Create k3d cluster for k8s comparison paths
+	@bash infra/scripts/k3d-setup.sh create
+
+k3d-down: ## Delete k3d cluster
+	@bash infra/scripts/k3d-setup.sh delete
+
+# ── Redis Enterprise Operator on k8s (Architecture #2) ────────────
+k8s-re-up: ## Deploy Redis Enterprise Operator + cluster + database on k8s
+	kubectl apply -f infra/k8s/re-operator/namespace.yaml
+	@echo "Installing Redis Enterprise Operator bundle $(RE_OPERATOR_VERSION)..."
+	kubectl apply -f $(RE_OPERATOR_BUNDLE) -n $(RE_NAMESPACE)
+	@echo "Waiting for operator to be ready..."
+	kubectl rollout status deployment/redis-enterprise-operator -n $(RE_NAMESPACE) --timeout=180s || true
+	@echo "Creating Redis Enterprise Cluster..."
+	kubectl apply -f infra/k8s/re-operator/rec.yaml
+	@echo "Waiting for REC pods (this may take several minutes)..."
+	kubectl rollout status statefulset/rec-poc-lab -n $(RE_NAMESPACE) --timeout=600s || true
+	@echo "Creating Redis Enterprise Database..."
+	kubectl apply -f infra/k8s/re-operator/redb.yaml
+	@echo "Redis Enterprise deployed. Run 'make k8s-re-status' to check."
+
+k8s-re-down: ## Tear down Redis Enterprise from k8s
+	kubectl delete -f infra/k8s/re-operator/redb.yaml --ignore-not-found
+	kubectl delete -f infra/k8s/re-operator/rec.yaml --ignore-not-found
+	kubectl delete -f $(RE_OPERATOR_BUNDLE) -n $(RE_NAMESPACE) --ignore-not-found || true
+	kubectl delete -f infra/k8s/re-operator/namespace.yaml --ignore-not-found
+
+k8s-re-status: ## Show Redis Enterprise k8s status
+	@echo "=== Redis Enterprise Cluster ==="
+	@kubectl get rec -n $(RE_NAMESPACE) 2>/dev/null || echo "No REC found"
+	@echo ""
+	@echo "=== Redis Enterprise Database ==="
+	@kubectl get redb -n $(RE_NAMESPACE) 2>/dev/null || echo "No REDB found"
+	@echo ""
+	@echo "=== Pods ==="
+	@kubectl get pods -n $(RE_NAMESPACE) 2>/dev/null || echo "No pods found"
+
+# ── OSS Redis on k8s with Sentinel (Architecture #5) ──────────────
+k8s-oss-up: ## Deploy OSS Redis with Sentinel on k8s
+	kubectl apply -f infra/k8s/oss-k8s/namespace.yaml
+	kubectl apply -f infra/k8s/oss-k8s/configmap.yaml
+	kubectl apply -f infra/k8s/oss-k8s/redis-statefulset.yaml
+	@echo "Waiting for Redis pods..."
+	kubectl rollout status statefulset/redis -n $(OSS_NAMESPACE) --timeout=180s
+	kubectl apply -f infra/k8s/oss-k8s/sentinel-deployment.yaml
+	@echo "Waiting for Sentinel pods..."
+	kubectl rollout status deployment/redis-sentinel -n $(OSS_NAMESPACE) --timeout=120s
+	@echo "OSS Redis with Sentinel deployed. Run 'make k8s-oss-status' to check."
+
+k8s-oss-down: ## Tear down OSS Redis from k8s
+	kubectl delete -f infra/k8s/oss-k8s/sentinel-deployment.yaml --ignore-not-found
+	kubectl delete -f infra/k8s/oss-k8s/redis-statefulset.yaml --ignore-not-found
+	kubectl delete -f infra/k8s/oss-k8s/configmap.yaml --ignore-not-found
+	kubectl delete -f infra/k8s/oss-k8s/namespace.yaml --ignore-not-found
+
+k8s-oss-status: ## Show OSS Redis k8s status
+	@echo "=== Redis Pods ==="
+	@kubectl get pods -n $(OSS_NAMESPACE) -l app=redis 2>/dev/null || echo "No Redis pods found"
+	@echo ""
+	@echo "=== Sentinel Pods ==="
+	@kubectl get pods -n $(OSS_NAMESPACE) -l app=redis-sentinel 2>/dev/null || echo "No Sentinel pods found"
+	@echo ""
+	@echo "=== Services ==="
+	@kubectl get svc -n $(OSS_NAMESPACE) 2>/dev/null || echo "No services found"
+
+# ── Convenience: all k8s stacks ───────────────────────────────────
+k8s-up: k8s-re-up k8s-oss-up ## Start all k8s-path stacks
+k8s-down: k8s-oss-down k8s-re-down ## Stop all k8s-path stacks
+k8s-status: k8s-re-status k8s-oss-status ## Status of all k8s-path stacks

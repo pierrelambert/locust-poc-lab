@@ -1,0 +1,51 @@
+# RedisEnterpriseDatabase (REDB) — POC Lab database
+#
+# Creates a database on the REC cluster with settings that match
+# the topology matrix comparison constraints:
+#   - Replication enabled (1 replica per shard)
+#   - AOF every 1 sec persistence
+#   - TLS off
+#   - Memory limit suitable for POC workloads
+#
+# This database is the target for Locust workloads and failure scenarios.
+
+apiVersion: app.redislabs.com/v1alpha1
+kind: RedisEnterpriseDatabase
+metadata:
+  name: redb-poc-lab
+  namespace: redis-enterprise
+  labels:
+    app.kubernetes.io/part-of: locust-poc-lab
+    lab/architecture: "2-re-operator"
+spec:
+  # Reference the REC cluster
+  redisEnterpriseCluster:
+    name: rec-poc-lab
+
+  # Memory allocation
+  memorySize: 1GB
+
+  # Replication — 1 replica per shard (matches topology matrix)
+  replication: true
+
+  # Persistence — AOF every 1 second
+  persistence: aofEveryOneSecond
+
+  # TLS off by default
+  tlsMode: disabled
+
+  # Sharding — single shard for HA comparison; increase for cluster comparison
+  shardCount: 1
+
+  # Eviction policy
+  evictionPolicy: noeviction
+
+  # Module list (empty — no modules for baseline comparison)
+  modulesList: []
+
+  # Proxy policy — all master shards (default)
+  proxyPolicy: all-master-shards
+
+  # Database port — optional, let the operator assign
+  # databasePort: 12000
+

@@ -1,0 +1,53 @@
+# RedisEnterpriseCluster (REC) — Architecture #2
+#
+# Topology matrix spec:
+#   - 3 pods
+#   - 2 vCPU per node
+#   - 4 GB RAM per node
+#   - AOF every 1 sec persistence
+#   - TLS off (optional enable)
+#
+# This CR tells the Redis Enterprise Operator to create a 3-node
+# Redis Enterprise cluster inside the redis-enterprise namespace.
+
+apiVersion: app.redislabs.com/v1
+kind: RedisEnterpriseCluster
+metadata:
+  name: rec-poc-lab
+  namespace: redis-enterprise
+  labels:
+    app.kubernetes.io/part-of: locust-poc-lab
+    lab/architecture: "2-re-operator"
+spec:
+  # 3-node cluster per topology matrix
+  nodes: 3
+
+  # Resource allocation per node — matches topology matrix
+  redisEnterpriseNodeResources:
+    limits:
+      cpu: "2"
+      memory: 4Gi
+    requests:
+      cpu: "2"
+      memory: 4Gi
+
+  # Persistence volume for AOF and snapshots
+  persistentSpec:
+    enabled: true
+    storageClassName: ""  # Use cluster default StorageClass
+    volumeSize: 10Gi
+
+  # Disable TLS by default (topology matrix: TLS off)
+  # To enable TLS, set this to true and provide certificates
+  enforceIPv4: true
+
+  # UI service — expose via NodePort for lab access
+  uiServiceType: NodePort
+
+  # License secret — must be created separately
+  # kubectl create secret generic rec-license -n redis-enterprise \
+  #   --from-file=license=./license.txt
+  #
+  # Uncomment the following when a license is available:
+  # license: rec-license
+
