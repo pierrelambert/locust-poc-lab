@@ -1,0 +1,46 @@
+workload:
+  name: "counter_hotkey"
+  description: "Inventory counters / rate limiters with hot-key skew — 60/40 read/write ratio"
+
+  connection:
+    host: "localhost"
+    port: 6379
+    password: "${REDIS_PASSWORD}"
+    db: 0
+    ssl: false
+    socket_timeout: 5.0
+    retry_on_timeout: true
+    max_connections: 50
+
+  key_config:
+    pattern: "counter:{scope}:{counter_id}"
+    key_space_size: 10000
+    hot_key_count: 100
+    hot_key_percentage: 80
+
+  data_config:
+    value_size_min: 8
+    value_size_max: 64
+    value_type: "integer"
+    ttl_min: 0
+    ttl_max: 0
+
+  traffic_config:
+    read_ratio: 60
+    write_ratio: 40
+    think_time_min_ms: 1
+    think_time_max_ms: 5
+    think_time_distribution: "uniform"
+    target_rps: 20000
+
+  seeding:
+    enabled: true
+    key_count: 10000
+    batch_size: 1000
+    verify_after_seed: true
+    random_seed: 42
+
+  replica_reads:
+    enabled: false
+    policy: "none"
+
