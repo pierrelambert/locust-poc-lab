@@ -1,4 +1,4 @@
-.PHONY: help setup lint clean
+.PHONY: help setup lint clean export-summary
 .PHONY: re-up re-down re-status
 .PHONY: oss-sentinel-up oss-sentinel-down oss-sentinel-status
 .PHONY: oss-cluster-up oss-cluster-down oss-cluster-status
@@ -26,6 +26,9 @@ setup: ## Install Python dependencies
 
 lint: ## Run linters
 	@echo "TODO: configure linters"
+
+export-summary: ## Export run summary (JSON + markdown) from a results directory. Usage: make export-summary RUN_DIR=results/<run_id>
+	python3 observability/exporters/run_summary_exporter.py $(RUN_DIR)
 
 clean: ## Remove caches and temporary files
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

@@ -139,8 +139,16 @@ capture_topology() {
 
 export_evidence() {
     log_step 9 "Export evidence and record operator actions"
-    local summary="${RUN_DIR}/run_summary.json"
-    cat > "${summary}" <<SUMEOF
+    local repo_root
+    repo_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$0")/../..")"
+    local exporter="${repo_root}/observability/exporters/run_summary_exporter.py"
+    if [[ -f "${exporter}" ]]; then
+        log_info "Running evidence exporter..."
+        python3 "${exporter}" "${RUN_DIR}" || log_warn "Evidence exporter failed — falling back to basic summary"
+    else
+        log_warn "Evidence exporter not found at ${exporter} — writing basic summary"
+        local summary="${RUN_DIR}/run_summary.json"
+        cat > "${summary}" <<SUMEOF
 {
   "run_id": "${RUN_ID}",
   "platform": "${PLATFORM}",
@@ -149,6 +157,7 @@ export_evidence() {
   "files": $(ls -1 "${RUN_DIR}" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read().strip().split('\n')))" 2>/dev/null || echo '[]')
 }
 SUMEOF
+    fi
     log_ok "Evidence exported to ${RUN_DIR}"
 }
 
