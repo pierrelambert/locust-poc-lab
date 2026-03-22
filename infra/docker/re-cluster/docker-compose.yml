@@ -1,0 +1,88 @@
+# Redis Enterprise Software — 3-node cluster (VM comparison path)
+# Architecture #1 from TOPOLOGY_MATRIX.md
+#
+# Resource budget: 6 vCPU / 12 GB RAM total (fits Docker Desktop 16 GB)
+# Persistence: AOF every 1 sec (configured via REST API after cluster join)
+# TLS: off by default
+#
+# Usage:
+#   docker compose up -d
+#   # Wait ~30s for nodes to boot, then run the bootstrap script
+#   # or use the REST API to create and join the cluster.
+
+services:
+  re-node1:
+    image: redislabs/redis:latest
+    container_name: re-node1
+    hostname: re-node1
+    restart: unless-stopped
+    ports:
+      - "9443:9443"   # Admin UI (HTTPS)
+      - "12000:12000" # Database endpoint (mapped from node1 only)
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4g
+    volumes:
+      - re-node1-data:/var/opt/redislabs/persist
+      - re-node1-log:/var/opt/redislabs/log
+    networks:
+      re-net:
+        ipv4_address: 172.20.0.11
+    cap_add:
+      - SYS_RESOURCE
+
+  re-node2:
+    image: redislabs/redis:latest
+    container_name: re-node2
+    hostname: re-node2
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4g
+    volumes:
+      - re-node2-data:/var/opt/redislabs/persist
+      - re-node2-log:/var/opt/redislabs/log
+    networks:
+      re-net:
+        ipv4_address: 172.20.0.12
+    cap_add:
+      - SYS_RESOURCE
+
+  re-node3:
+    image: redislabs/redis:latest
+    container_name: re-node3
+    hostname: re-node3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4g
+    volumes:
+      - re-node3-data:/var/opt/redislabs/persist
+      - re-node3-log:/var/opt/redislabs/log
+    networks:
+      re-net:
+        ipv4_address: 172.20.0.13
+    cap_add:
+      - SYS_RESOURCE
+
+volumes:
+  re-node1-data:
+  re-node1-log:
+  re-node2-data:
+  re-node2-log:
+  re-node3-data:
+  re-node3-log:
+
+networks:
+  re-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
