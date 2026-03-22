@@ -8,6 +8,7 @@
 .PHONY: k8s-oss-up k8s-oss-down k8s-oss-status
 .PHONY: k8s-up k8s-down k8s-status
 .PHONY: obs-up obs-down obs-status
+.PHONY: validate cleanup-all
 
 COMPOSE = docker compose
 
@@ -152,3 +153,10 @@ obs-down: ## Stop observability stack and remove containers
 
 obs-status: ## Show observability stack container status
 	$(COMPOSE) -f observability/docker-compose.yml -p obs-stack ps
+
+# ── Validation & Cleanup ─────────────────────────────────────────────
+validate: ## Validate all project artifacts (Compose, Python, Bash, YAML, Makefile)
+	@bash infra/scripts/validate_all.sh
+
+cleanup-all: ## Tear down all Docker stacks, k8s resources, and clean results
+	@bash infra/scripts/cleanup_all.sh
