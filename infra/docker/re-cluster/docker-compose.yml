@@ -29,7 +29,7 @@ services:
       - re-node1-log:/var/opt/redislabs/log
     networks:
       re-net:
-        ipv4_address: 172.20.0.11
+        ipv4_address: 172.28.0.11
     cap_add:
       - SYS_RESOURCE
 
@@ -48,7 +48,7 @@ services:
       - re-node2-log:/var/opt/redislabs/log
     networks:
       re-net:
-        ipv4_address: 172.20.0.12
+        ipv4_address: 172.28.0.12
     cap_add:
       - SYS_RESOURCE
 
@@ -67,7 +67,7 @@ services:
       - re-node3-log:/var/opt/redislabs/log
     networks:
       re-net:
-        ipv4_address: 172.20.0.13
+        ipv4_address: 172.28.0.13
     cap_add:
       - SYS_RESOURCE
 
@@ -84,5 +84,5 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.20.0.0/24
+        - subnet: 172.28.0.0/24
 

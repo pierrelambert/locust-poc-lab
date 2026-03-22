@@ -34,7 +34,7 @@ def create_redis_pool(conn_cfg: Dict[str, Any]) -> redis.ConnectionPool:
     }
 
     password = conn_cfg.get("password")
-    if password:
+    if password and str(password).strip():
         pool_kwargs["password"] = password
 
     if conn_cfg.get("ssl", False):

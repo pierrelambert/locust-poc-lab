@@ -11,8 +11,21 @@ _ENV_VAR_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
 
 def _substitute_env_vars(value: Any) -> Any:
-    """Recursively substitute ${VAR_NAME} references in strings."""
+    """Recursively substitute ${VAR_NAME} references in strings.
+
+    If the entire string is a single ``${VAR}`` reference and the variable is
+    unset, the value is replaced with an empty string (useful for optional
+    fields like ``password``).  If the variable is embedded in a larger string
+    (e.g. ``redis://${HOST}:6379``) and is unset, a ``ValueError`` is raised
+    so that required references are still caught.
+    """
     if isinstance(value, str):
+        # Fast path: entire value is a single env-var reference
+        full_match = _ENV_VAR_RE.fullmatch(value)
+        if full_match:
+            var_name = full_match.group(1)
+            return os.environ.get(var_name, "")
+
         def _replace(match):
             var_name = match.group(1)
             env_val = os.environ.get(var_name)

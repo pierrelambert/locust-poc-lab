@@ -77,8 +77,8 @@ services:
           cpus: "0.25"
           memory: 128m
     volumes:
-      - ./conf/sentinel.conf:/usr/local/etc/redis/sentinel.conf:ro
-    entrypoint: ["redis-sentinel", "/usr/local/etc/redis/sentinel.conf"]
+      - ./conf/sentinel.conf:/tmp/sentinel.conf:ro
+    entrypoint: ["/bin/sh", "-c", "cp /tmp/sentinel.conf /etc/sentinel.conf && redis-sentinel /etc/sentinel.conf"]
 
   sentinel2:
     <<: *redis-common
@@ -92,8 +92,8 @@ services:
           cpus: "0.25"
           memory: 128m
     volumes:
-      - ./conf/sentinel.conf:/usr/local/etc/redis/sentinel.conf:ro
-    entrypoint: ["redis-sentinel", "/usr/local/etc/redis/sentinel.conf"]
+      - ./conf/sentinel.conf:/tmp/sentinel.conf:ro
+    entrypoint: ["/bin/sh", "-c", "cp /tmp/sentinel.conf /etc/sentinel.conf && redis-sentinel /etc/sentinel.conf"]
 
   sentinel3:
     <<: *redis-common
@@ -107,8 +107,8 @@ services:
           cpus: "0.25"
           memory: 128m
     volumes:
-      - ./conf/sentinel.conf:/usr/local/etc/redis/sentinel.conf:ro
-    entrypoint: ["redis-sentinel", "/usr/local/etc/redis/sentinel.conf"]
+      - ./conf/sentinel.conf:/tmp/sentinel.conf:ro
+    entrypoint: ["/bin/sh", "-c", "cp /tmp/sentinel.conf /etc/sentinel.conf && redis-sentinel /etc/sentinel.conf"]
 
 volumes:
   redis-primary-data:
