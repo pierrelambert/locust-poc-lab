@@ -7,6 +7,7 @@
 .PHONY: k8s-re-up k8s-re-down k8s-re-status
 .PHONY: k8s-oss-up k8s-oss-down k8s-oss-status
 .PHONY: k8s-up k8s-down k8s-status
+.PHONY: obs-up obs-down obs-status
 
 COMPOSE = docker compose
 
@@ -138,3 +139,13 @@ k8s-oss-status: ## Show OSS Redis k8s status
 k8s-up: k8s-re-up k8s-oss-up ## Start all k8s-path stacks
 k8s-down: k8s-oss-down k8s-re-down ## Stop all k8s-path stacks
 k8s-status: k8s-re-status k8s-oss-status ## Status of all k8s-path stacks
+
+# ── Observability stack (Prometheus + Grafana) ────────────────────
+obs-up: ## Start observability stack (Prometheus + Grafana + exporters)
+	$(COMPOSE) -f observability/docker-compose.yml -p obs-stack up -d
+
+obs-down: ## Stop observability stack and remove containers
+	$(COMPOSE) -f observability/docker-compose.yml -p obs-stack down
+
+obs-status: ## Show observability stack container status
+	$(COMPOSE) -f observability/docker-compose.yml -p obs-stack ps
