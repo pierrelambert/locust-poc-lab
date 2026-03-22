@@ -66,7 +66,7 @@ The baseline establishes normal SLA behavior. All later comparisons reference th
 PLATFORM=re \
 LOCUST_FILE=workloads/locustfiles/cache_read_heavy.py \
 WORKLOAD_PROFILE=workloads/profiles/cache_read_heavy.yaml \
-PRIMARY_CONTAINER=re-node-1 \
+PRIMARY_CONTAINER=re-node1 \
 BASELINE_DURATION=600 \
 WARMUP_DURATION=60 \
   ./scenarios/scripts/01_baseline.sh
@@ -128,7 +128,7 @@ This is the core HA proof. You will kill the primary Redis process and observe h
 PLATFORM=re \
 LOCUST_FILE=workloads/locustfiles/cache_read_heavy.py \
 WORKLOAD_PROFILE=workloads/profiles/cache_read_heavy.yaml \
-PRIMARY_CONTAINER=re-node-1 \
+PRIMARY_CONTAINER=re-node1 \
 BASELINE_DURATION=600 \
 WARMUP_DURATION=60 \
 POST_RECOVERY_DURATION=300 \
@@ -150,7 +150,7 @@ PLATFORM=oss-sentinel \
 LOCUST_FILE=workloads/locustfiles/cache_read_heavy.py \
 WORKLOAD_PROFILE=workloads/profiles/cache_read_heavy.yaml \
 PRIMARY_CONTAINER=redis-primary \
-SENTINEL_CONTAINER=sentinel-1 \
+SENTINEL_CONTAINER=sentinel1 \
 BASELINE_DURATION=600 \
 WARMUP_DURATION=60 \
 POST_RECOVERY_DURATION=300 \

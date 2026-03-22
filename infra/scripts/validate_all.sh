@@ -64,7 +64,7 @@ if command -v python3 &>/dev/null; then
 import yaml, sys
 try:
     with open('$f') as fh:
-        yaml.safe_load(fh)
+        list(yaml.safe_load_all(fh))
 except Exception as e:
     print(str(e), file=sys.stderr)
     sys.exit(1)

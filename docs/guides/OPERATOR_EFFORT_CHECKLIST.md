@@ -38,7 +38,7 @@ No disruption — this scenario establishes the reference. Record any manual ste
 | **Pre-disruption** | | | |
 | Identify primary node | Automatic (cluster manages) | `redis-cli -p 26379 SENTINEL get-master-addr-by-name` | `redis-cli CLUSTER NODES \| grep master` |
 | **During disruption** | | | |
-| Kill primary | `docker kill re-node-1` | `docker kill redis-primary` | `docker kill redis-node-1` |
+| Kill primary | `docker kill re-node1` | `docker kill redis-primary` | `docker kill redis-node1` |
 | Failover trigger | Automatic — no action needed | Sentinel detects + elects (automatic but slower) | Cluster protocol detects + elects |
 | Manual failover command needed? | Expected: ❌ | Expected: ❌ (Sentinel handles) | Expected: ❌ (Cluster handles) |
 | Client reconnection needed? | Expected: ❌ | Expected: possibly ✅ | Expected: possibly ✅ (MOVED redirects) |
@@ -61,11 +61,11 @@ No disruption — this scenario establishes the reference. Record any manual ste
 | **Pre-disruption** | | | |
 | Record topology snapshot | `capture_topology` (scripted) | `capture_topology` (scripted) | `capture_topology` (scripted) |
 | **During disruption** | | | |
-| Stop node | `docker stop re-node-2` | `docker stop redis-replica-1` | `docker stop redis-node-3` |
+| Stop node | `docker stop re-node2` | `docker stop redis-replica1` | `docker stop redis-node3` |
 | Wait for detection | Automatic | Sentinel timeout (~30s default) | Cluster timeout (~15s default) |
 | Manual intervention during outage? | Expected: ❌ | Expected: possibly ✅ | Expected: possibly ✅ |
 | **Recovery** | | | |
-| Restart node | `docker start re-node-2` | `docker start redis-replica-1` | `docker start redis-node-3` |
+| Restart node | `docker start re-node2` | `docker start redis-replica1` | `docker start redis-node3` |
 | Node auto-rejoins cluster? | Expected: ✅ | Expected: ✅ (if config intact) | Expected: ✅ (if cluster-config intact) |
 | Manual rejoin commands needed? | Expected: ❌ | Expected: possibly `REPLICAOF` | Expected: possibly `CLUSTER MEET` |
 | Slot/shard rebalancing needed? | Expected: ❌ (automatic) | N/A (no slots) | Expected: possibly `CLUSTER REBALANCE` |
