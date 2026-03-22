@@ -1,0 +1,46 @@
+workload:
+  name: "cache_read_heavy"
+  description: "Product catalog cache simulation — 90/10 read/write ratio"
+
+  connection:
+    host: "localhost"
+    port: 6379
+    password: "${REDIS_PASSWORD}"
+    db: 0
+    ssl: false
+    socket_timeout: 5.0
+    retry_on_timeout: true
+    max_connections: 50
+
+  key_config:
+    pattern: "cache:{category}:{item_id}"
+    key_space_size: 100000
+    hot_key_count: 0
+    hot_key_percentage: 0
+
+  data_config:
+    value_size_min: 512
+    value_size_max: 2048
+    value_type: "json"
+    ttl_min: 300
+    ttl_max: 900
+
+  traffic_config:
+    read_ratio: 90
+    write_ratio: 10
+    think_time_min_ms: 5
+    think_time_max_ms: 20
+    think_time_distribution: "uniform"
+    target_rps: 10000
+
+  seeding:
+    enabled: true
+    key_count: 100000
+    batch_size: 1000
+    verify_after_seed: true
+    random_seed: 42
+
+  replica_reads:
+    enabled: false
+    policy: "none"
+
