@@ -30,7 +30,7 @@ Demonstrate whether the platform can expand capacity or promote replicas without
 | `POST_RECOVERY_DURATION` | No | `300` | Post-scale observation window (seconds) |
 | `BASELINE_DURATION` | No | `600` | Pre-disruption baseline duration (seconds) |
 | `WARMUP_DURATION` | No | `60` | Warmup duration (seconds) |
-| `SENTINEL_CONTAINER` | No | `sentinel-1` | Sentinel container (oss-sentinel only) |
+| `SENTINEL_CONTAINER` | No | `sentinel1` | Sentinel container (oss-sentinel only) |
 
 ## Execution
 
@@ -40,7 +40,7 @@ Demonstrate whether the platform can expand capacity or promote replicas without
 PLATFORM=oss-sentinel \
 LOCUST_FILE=workloads/locustfiles/cache_read_heavy.py \
 PRIMARY_CONTAINER=redis-primary \
-REPLICA_CONTAINER=redis-replica-1 \
+REPLICA_CONTAINER=redis-replica1 \
 SCALE_MODE=promote_replica \
 ./scenarios/scripts/06_replica_promotion.sh
 ```
@@ -50,8 +50,8 @@ SCALE_MODE=promote_replica \
 ```bash
 PLATFORM=oss-cluster \
 LOCUST_FILE=workloads/locustfiles/cache_read_heavy.py \
-PRIMARY_CONTAINER=redis-node-1 \
-NEW_NODE_CONTAINER=redis-node-4 \
+PRIMARY_CONTAINER=redis-node1 \
+NEW_NODE_CONTAINER=redis-node4 \
 SCALE_MODE=add_node \
 ./scenarios/scripts/06_replica_promotion.sh
 ```

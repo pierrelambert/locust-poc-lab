@@ -118,12 +118,12 @@ main() {
         case "${PLATFORM}" in
             oss-sentinel)
                 local master_info
-                master_info=$(docker exec "${SENTINEL_CONTAINER:-sentinel-1}" \
+                master_info=$(docker exec "${SENTINEL_CONTAINER:-sentinel1}" \
                     redis-cli -p 26379 SENTINEL get-master-addr-by-name mymaster 2>/dev/null || echo "")
                 if [[ -n "$master_info" ]]; then
                     log_info "Sentinel reports master: ${master_info} (elapsed: ${recovery_elapsed}s)"
                     # Try to ping the new master
-                    if docker exec "${SENTINEL_CONTAINER:-sentinel-1}" \
+                    if docker exec "${SENTINEL_CONTAINER:-sentinel1}" \
                         redis-cli -p 26379 SENTINEL ckquorum mymaster 2>/dev/null | grep -q "OK"; then
                         new_primary_found=true
                         mark_event "failover_detected" "elapsed=${recovery_elapsed}s"
@@ -132,7 +132,7 @@ main() {
                 fi
                 ;;
             oss-cluster)
-                if docker exec "${REPLICA_CONTAINER:-redis-node-2}" redis-cli CLUSTER INFO 2>/dev/null | grep -q "cluster_state:ok"; then
+                if docker exec "${REPLICA_CONTAINER:-redis-node2}" redis-cli CLUSTER INFO 2>/dev/null | grep -q "cluster_state:ok"; then
                     new_primary_found=true
                     mark_event "failover_detected" "elapsed=${recovery_elapsed}s"
                     break

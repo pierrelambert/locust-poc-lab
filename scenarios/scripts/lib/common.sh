@@ -82,14 +82,13 @@ wait_for_redis() {
 LOCUST_PID=""
 start_locust() {
     local csv_prefix="${RUN_DIR}/locust" run_time="${1:-}"
-    local extra_args=()
-    [[ -n "${WORKLOAD_PROFILE}" ]] && extra_args+=(--config "${WORKLOAD_PROFILE}")
-    [[ -n "${run_time}" ]] && extra_args+=(-t "${run_time}")
+    local cmd=(locust -f "${LOCUST_FILE}" --headless --host "${LOCUST_HOST}"
+        -u "${LOCUST_USERS}" -r "${LOCUST_SPAWN_RATE}"
+        --csv "${csv_prefix}" --csv-full-history)
+    [[ -n "${WORKLOAD_PROFILE}" ]] && cmd+=(--config "${WORKLOAD_PROFILE}")
+    [[ -n "${run_time}" ]] && cmd+=(-t "${run_time}")
     log_info "Starting Locust: users=${LOCUST_USERS}, spawn_rate=${LOCUST_SPAWN_RATE}"
-    locust -f "${LOCUST_FILE}" --headless --host "${LOCUST_HOST}" \
-        -u "${LOCUST_USERS}" -r "${LOCUST_SPAWN_RATE}" \
-        --csv "${csv_prefix}" --csv-full-history \
-        "${extra_args[@]}" > "${RUN_DIR}/locust_stdout.log" 2>&1 &
+    "${cmd[@]}" > "${RUN_DIR}/locust_stdout.log" 2>&1 &
     LOCUST_PID=$!
     log_ok "Locust started (PID: ${LOCUST_PID})"
 }
@@ -128,10 +127,11 @@ capture_redis_info() {
 }
 
 capture_topology() {
-    local label="${1:-snapshot}" outfile="${RUN_DIR}/topology_${label}.txt"
+    local label="${1:-snapshot}"
+    local outfile="${RUN_DIR}/topology_${label}.txt"
     case "${PLATFORM}" in
-        oss-cluster)  docker exec "${PRIMARY_CONTAINER:-redis-node-1}" redis-cli CLUSTER NODES > "${outfile}" 2>/dev/null || true ;;
-        oss-sentinel) docker exec "${SENTINEL_CONTAINER:-sentinel-1}" redis-cli -p 26379 SENTINEL masters > "${outfile}" 2>/dev/null || true ;;
+        oss-cluster)  docker exec "${PRIMARY_CONTAINER:-redis-node1}" redis-cli CLUSTER NODES > "${outfile}" 2>/dev/null || true ;;
+        oss-sentinel) docker exec "${SENTINEL_CONTAINER:-sentinel1}" redis-cli -p 26379 SENTINEL masters > "${outfile}" 2>/dev/null || true ;;
         re)           echo "RE topology capture: use rladmin status" >> "${outfile}" ;;
     esac
     log_info "Topology captured: ${outfile}"

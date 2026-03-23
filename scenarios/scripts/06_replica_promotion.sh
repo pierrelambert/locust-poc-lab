@@ -25,7 +25,7 @@
 #
 # Usage:
 #   PLATFORM=oss-sentinel LOCUST_FILE=workloads/locustfiles/cache_read_heavy.py \
-#     PRIMARY_CONTAINER=redis-primary REPLICA_CONTAINER=redis-replica-1 \
+#     PRIMARY_CONTAINER=redis-primary REPLICA_CONTAINER=redis-replica1 \
 #     SCALE_MODE=promote_replica \
 #     ./scenarios/scripts/06_replica_promotion.sh
 
@@ -125,7 +125,7 @@ main() {
             case "${PLATFORM}" in
                 oss-sentinel)
                     log_info "Triggering sentinel failover to promote ${REPLICA_CONTAINER}..."
-                    docker exec "${SENTINEL_CONTAINER:-sentinel-1}" \
+                    docker exec "${SENTINEL_CONTAINER:-sentinel1}" \
                         redis-cli -p 26379 SENTINEL failover mymaster 2>/dev/null || true
                     operator_steps=$((operator_steps + 1))
                     mark_event "failover_triggered" "via=sentinel"
@@ -203,7 +203,7 @@ main() {
         recovery_elapsed=$(( $(ts_epoch) - recovery_start ))
         case "${PLATFORM}" in
             oss-sentinel)
-                if docker exec "${SENTINEL_CONTAINER:-sentinel-1}" \
+                if docker exec "${SENTINEL_CONTAINER:-sentinel1}" \
                     redis-cli -p 26379 SENTINEL ckquorum mymaster 2>/dev/null | grep -q "OK"; then
                     recovery_confirmed=true
                     mark_event "recovery_detected" "elapsed=${recovery_elapsed}s"

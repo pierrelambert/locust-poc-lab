@@ -29,8 +29,8 @@ Demonstrate split-brain behavior, write safety, and diagnostic clarity under a n
 | `POST_RECOVERY_DURATION` | No | `300` | Post-recovery observation window (seconds) |
 | `BASELINE_DURATION` | No | `600` | Pre-disruption baseline duration (seconds) |
 | `WARMUP_DURATION` | No | `60` | Warmup duration (seconds) |
-| `SENTINEL_CONTAINER` | No | `sentinel-1` | Sentinel container (oss-sentinel only) |
-| `REPLICA_CONTAINER` | No | `redis-node-2` | Fallback container for cluster state checks |
+| `SENTINEL_CONTAINER` | No | `sentinel1` | Sentinel container (oss-sentinel only) |
+| `REPLICA_CONTAINER` | No | `redis-node2` | Fallback container for cluster state checks |
 
 ## Execution
 
