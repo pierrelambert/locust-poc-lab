@@ -106,14 +106,39 @@ def _common_pool_kwargs(conn_cfg: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _apply_ssl(kwargs: Dict[str, Any], conn_cfg: Dict[str, Any]) -> None:
-    """Mutate *kwargs* to add SSL/TLS options when enabled."""
+    """Mutate *kwargs* to add SSL/TLS options when enabled.
+
+    When certificate paths (``ssl_certfile``, ``ssl_keyfile``,
+    ``ssl_ca_certs``) are present in *conn_cfg*,
+    :class:`~workloads.lib.tls_manager.TLSCertificateManager` is used
+    to build the full set of SSL kwargs.  Otherwise falls back to
+    simple flag-based SSL.
+    """
     if not conn_cfg.get("ssl", False):
         return
-    kwargs["ssl"] = True
-    kwargs["ssl_cert_reqs"] = "required"
-    sni = conn_cfg.get("sni_hostname")
-    if sni:
-        kwargs["ssl_check_hostname"] = True
+
+    # Check whether explicit cert paths are provided
+    has_certs = any(
+        conn_cfg.get(k)
+        for k in ("ssl_certfile", "ssl_keyfile", "ssl_ca_certs")
+    )
+
+    if has_certs:
+        from workloads.lib.tls_manager import TLSCertificateManager
+
+        mgr = TLSCertificateManager(
+            cert_path=conn_cfg.get("ssl_certfile"),
+            key_path=conn_cfg.get("ssl_keyfile"),
+            ca_path=conn_cfg.get("ssl_ca_certs"),
+            sni_hostname=conn_cfg.get("sni_hostname"),
+        )
+        kwargs.update(mgr.ssl_kwargs())
+    else:
+        kwargs["ssl"] = True
+        kwargs["ssl_cert_reqs"] = "required"
+        sni = conn_cfg.get("sni_hostname")
+        if sni:
+            kwargs["ssl_check_hostname"] = True
 
 
 # ---------------------------------------------------------------------------
