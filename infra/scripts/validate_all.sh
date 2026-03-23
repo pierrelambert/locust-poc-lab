@@ -86,7 +86,7 @@ MAKEFILE="$REPO_ROOT/Makefile"
 if [[ -f "$MAKEFILE" ]]; then
     # Verify key targets are defined
     EXPECTED_TARGETS=(
-        help setup lint clean export-summary
+        help setup lint clean export-summary test-smoke
         re-up re-down re-status
         oss-sentinel-up oss-sentinel-down oss-sentinel-status
         oss-cluster-up oss-cluster-down oss-cluster-status

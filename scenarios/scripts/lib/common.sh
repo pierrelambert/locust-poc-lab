@@ -132,9 +132,225 @@ capture_topology() {
     case "${PLATFORM}" in
         oss-cluster)  docker exec "${PRIMARY_CONTAINER:-redis-node1}" redis-cli CLUSTER NODES > "${outfile}" 2>/dev/null || true ;;
         oss-sentinel) docker exec "${SENTINEL_CONTAINER:-sentinel1}" redis-cli -p 26379 SENTINEL masters > "${outfile}" 2>/dev/null || true ;;
-        re)           echo "RE topology capture: use rladmin status" >> "${outfile}" ;;
+        re)           capture_re_topology "${label}" ;;
     esac
     log_info "Topology captured: ${outfile}"
+}
+
+# ── Redis Enterprise helpers ──────────────────────────────────────────────────
+# These functions use rladmin CLI (inside the RE container) and the REST API
+# to perform real verification of RE cluster state, failover, and recovery.
+#
+# Required env vars for RE platform:
+#   RE_CLUSTER_CONTAINER - Container running the RE cluster node (default: re-node1)
+#   RE_API_PORT          - REST API port (default: 9443)
+#   RE_DB_NAME           - Database name in RE (default: db1)
+#   RE_API_USER          - REST API username (default: admin@redis.io)
+#   RE_API_PASS          - REST API password (default: redis123)
+
+RE_CLUSTER_CONTAINER="${RE_CLUSTER_CONTAINER:-re-node1}"
+RE_API_PORT="${RE_API_PORT:-9443}"
+RE_DB_NAME="${RE_DB_NAME:-db1}"
+RE_API_USER="${RE_API_USER:-admin@redis.io}"
+RE_API_PASS="${RE_API_PASS:-redis123}"
+
+# Run rladmin inside the RE cluster container
+_re_rladmin() {
+    docker exec "${RE_CLUSTER_CONTAINER}" rladmin "$@" 2>/dev/null
+}
+
+# Call the RE REST API (GET by default)
+_re_api() {
+    local method="${1:-GET}" endpoint="$2"
+    shift 2
+    docker exec "${RE_CLUSTER_CONTAINER}" \
+        curl -sk -u "${RE_API_USER}:${RE_API_PASS}" \
+        -X "${method}" \
+        -H "Content-Type: application/json" \
+        "https://localhost:${RE_API_PORT}${endpoint}" "$@" 2>/dev/null
+}
+
+# Get the RE database UID by name
+_re_get_db_uid() {
+    _re_api GET "/v1/bdbs" | python3 -c "
+import sys, json
+try:
+    dbs = json.load(sys.stdin)
+    for db in dbs:
+        if db.get('name') == '${RE_DB_NAME}':
+            print(db['uid']); break
+    else:
+        print('')
+except: print('')
+" 2>/dev/null
+}
+
+# Capture full RE topology: rladmin status + REST API shard/endpoint info
+capture_re_topology() {
+    local label="${1:-snapshot}"
+    local outfile="${RUN_DIR}/topology_${label}.txt"
+    {
+        echo "=== rladmin status (${label}) ==="
+        _re_rladmin status || echo "(rladmin status unavailable)"
+        echo ""
+        echo "=== rladmin status shards ==="
+        _re_rladmin status shards || echo "(rladmin status shards unavailable)"
+        echo ""
+        echo "=== REST API /v1/shards ==="
+        _re_api GET "/v1/shards" | python3 -c "
+import sys, json
+try:
+    shards = json.load(sys.stdin)
+    for s in shards:
+        print(f\"  shard {s.get('uid')}: role={s.get('role','?')} status={s.get('status','?')} node={s.get('node_uid','?')}\")
+except: print('  (unavailable)')
+" 2>/dev/null || echo "  (unavailable)"
+        echo ""
+        echo "=== REST API /v1/bdbs ==="
+        _re_api GET "/v1/bdbs" | python3 -c "
+import sys, json
+try:
+    dbs = json.load(sys.stdin)
+    for db in dbs:
+        print(f\"  db {db.get('uid')}: name={db.get('name','?')} status={db.get('status','?')} shards={db.get('shards_count','?')}\")
+except: print('  (unavailable)')
+" 2>/dev/null || echo "  (unavailable)"
+    } > "${outfile}" 2>/dev/null
+}
+
+# Wait for RE failover to complete by polling shard roles via REST API.
+# Detects that a new master shard has appeared (role changed) compared to
+# the pre-disruption state.
+# Args: $1 = max wait seconds (default 120)
+#        $2 = pre-disruption master node UID (optional, for comparison)
+# Returns 0 on success, 1 on timeout
+wait_for_re_failover() {
+    local max_wait="${1:-120}" pre_master_node="${2:-}"
+    local elapsed=0
+    log_info "Waiting for RE failover (timeout: ${max_wait}s)..."
+
+    while [[ $elapsed -lt $max_wait ]]; do
+        sleep 2
+        elapsed=$(( elapsed + 2 ))
+
+        # Query shard status via REST API
+        local shard_info
+        shard_info=$(_re_api GET "/v1/shards" 2>/dev/null | python3 -c "
+import sys, json
+try:
+    shards = json.load(sys.stdin)
+    masters = [s for s in shards if s.get('role') == 'master' and s.get('status') == 'active']
+    if masters:
+        m = masters[0]
+        print(f\"OK node={m.get('node_uid','')} shard={m.get('uid','')} status={m.get('status','')}\")
+    else:
+        print('WAITING')
+except: print('ERROR')
+" 2>/dev/null)
+
+        if [[ "${shard_info}" == WAITING ]] || [[ "${shard_info}" == ERROR ]]; then
+            log_info "RE failover in progress... (${elapsed}s / ${max_wait}s)"
+            continue
+        fi
+
+        if [[ "${shard_info}" == OK* ]]; then
+            local new_node
+            new_node=$(echo "${shard_info}" | sed 's/.*node=\([^ ]*\).*/\1/')
+            # If we know the pre-disruption master node, verify it changed
+            if [[ -n "${pre_master_node}" ]] && [[ "${new_node}" == "${pre_master_node}" ]]; then
+                log_info "RE master still on original node ${new_node}, waiting... (${elapsed}s)"
+                continue
+            fi
+            log_ok "RE failover detected: ${shard_info} (elapsed: ${elapsed}s)"
+            mark_event "failover_detected" "elapsed=${elapsed}s ${shard_info}"
+            return 0
+        fi
+
+        log_info "RE failover check: ${shard_info} (${elapsed}s / ${max_wait}s)"
+    done
+
+    log_warn "RE failover not confirmed within ${max_wait}s"
+    mark_event "failover_timeout" "max_wait=${max_wait}s"
+    return 1
+}
+
+# Wait for RE recovery — all shards active and cluster healthy
+# Args: $1 = max wait seconds (default 120)
+# Returns 0 on success, 1 on timeout
+wait_for_re_recovery() {
+    local max_wait="${1:-120}"
+    local elapsed=0
+    log_info "Waiting for RE recovery (timeout: ${max_wait}s)..."
+
+    while [[ $elapsed -lt $max_wait ]]; do
+        sleep 2
+        elapsed=$(( elapsed + 2 ))
+
+        # Check cluster health via rladmin
+        local cluster_ok
+        cluster_ok=$(_re_rladmin status 2>/dev/null | grep -c "OK" || echo "0")
+
+        # Check all shards are active via REST API
+        local shard_status
+        shard_status=$(_re_api GET "/v1/shards" 2>/dev/null | python3 -c "
+import sys, json
+try:
+    shards = json.load(sys.stdin)
+    total = len(shards)
+    active = sum(1 for s in shards if s.get('status') == 'active')
+    if total > 0 and active == total:
+        print(f'OK active={active}/{total}')
+    else:
+        print(f'WAITING active={active}/{total}')
+except: print('ERROR')
+" 2>/dev/null)
+
+        if [[ "${shard_status}" == OK* ]]; then
+            log_ok "RE recovery confirmed: ${shard_status} (elapsed: ${elapsed}s)"
+            mark_event "recovery_detected" "elapsed=${elapsed}s ${shard_status}"
+            return 0
+        fi
+
+        log_info "RE recovery in progress: ${shard_status} (${elapsed}s / ${max_wait}s)"
+    done
+
+    log_warn "RE recovery not confirmed within ${max_wait}s"
+    mark_event "recovery_timeout" "max_wait=${max_wait}s"
+    return 1
+}
+
+# Get the node UID of the current RE master shard
+# Prints the node UID or empty string
+re_get_master_node() {
+    _re_api GET "/v1/shards" 2>/dev/null | python3 -c "
+import sys, json
+try:
+    shards = json.load(sys.stdin)
+    masters = [s for s in shards if s.get('role') == 'master' and s.get('status') == 'active']
+    if masters:
+        print(masters[0].get('node_uid', ''))
+    else:
+        print('')
+except: print('')
+" 2>/dev/null
+}
+
+# Check RE cluster health — returns 0 if healthy, 1 otherwise
+re_cluster_healthy() {
+    local node_status
+    node_status=$(_re_api GET "/v1/nodes" 2>/dev/null | python3 -c "
+import sys, json
+try:
+    nodes = json.load(sys.stdin)
+    total = len(nodes)
+    active = sum(1 for n in nodes if n.get('status') == 'active')
+    if total > 0 and active == total:
+        print(f'OK active={active}/{total}')
+    else:
+        print(f'DEGRADED active={active}/{total}')
+except: print('ERROR')
+" 2>/dev/null)
+    [[ "${node_status}" == OK* ]]
 }
 
 export_evidence() {

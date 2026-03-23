@@ -3,6 +3,7 @@ workload:
   description: "Inventory counters / rate limiters with hot-key skew — 60/40 read/write ratio"
 
   connection:
+    connection_mode: "standalone"
     host: "localhost"
     port: 6379
     password: "${REDIS_PASSWORD}"

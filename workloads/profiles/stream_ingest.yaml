@@ -3,6 +3,7 @@ workload:
   description: "Event pipeline with Redis Streams — 50/50 producer/consumer ratio"
 
   connection:
+    connection_mode: "standalone"
     host: "localhost"
     port: 6379
     password: "${REDIS_PASSWORD}"

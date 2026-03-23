@@ -19,7 +19,7 @@ import time
 from locust import User, between, events, task
 
 from workloads.lib.config import load_profile
-from workloads.lib.connections import create_redis_pool, get_redis_client, reset_pool
+from workloads.lib.connections import get_redis_client, reset_pool
 from workloads.lib.metrics import redis_command_timer
 from workloads.lib.seeding import seed_data, verify_seed
 

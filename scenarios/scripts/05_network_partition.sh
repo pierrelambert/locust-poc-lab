@@ -164,7 +164,17 @@ main() {
                 mark_event "partition_monitor" "elapsed=${elapsed}s ${cluster_state}"
                 ;;
             re)
-                mark_event "partition_monitor" "elapsed=${elapsed}s re_check_manual"
+                local re_health
+                re_health=$(_re_api GET "/v1/shards" 2>/dev/null | python3 -c "
+import sys, json
+try:
+    shards = json.load(sys.stdin)
+    active = sum(1 for s in shards if s.get('status') == 'active')
+    masters = sum(1 for s in shards if s.get('role') == 'master' and s.get('status') == 'active')
+    print(f'active_shards={active} masters={masters}')
+except: print('unavailable')
+" 2>/dev/null || echo "unavailable")
+                mark_event "partition_monitor" "elapsed=${elapsed}s ${re_health}"
                 ;;
         esac
         log_info "Partition active: ${elapsed}s / ${PARTITION_DURATION}s"
@@ -207,8 +217,9 @@ main() {
                 fi
                 ;;
             re)
-                recovery_confirmed=true
-                mark_event "recovery_detected" "elapsed=${recovery_elapsed}s assumed"
+                if wait_for_re_recovery "${max_recovery_wait}"; then
+                    recovery_confirmed=true
+                fi
                 break
                 ;;
         esac

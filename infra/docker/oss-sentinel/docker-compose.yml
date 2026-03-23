@@ -71,6 +71,8 @@ services:
     hostname: sentinel1
     depends_on:
       - redis-primary
+    ports:
+      - "26379:26379"
     deploy:
       resources:
         limits:
@@ -86,6 +88,8 @@ services:
     hostname: sentinel2
     depends_on:
       - redis-primary
+    ports:
+      - "26380:26379"
     deploy:
       resources:
         limits:
@@ -101,6 +105,8 @@ services:
     hostname: sentinel3
     depends_on:
       - redis-primary
+    ports:
+      - "26381:26379"
     deploy:
       resources:
         limits:

@@ -3,6 +3,7 @@ workload:
   description: "Ranking system with sorted sets — 80/20 read/write ratio"
 
   connection:
+    connection_mode: "standalone"
     host: "localhost"
     port: 6379
     password: "${REDIS_PASSWORD}"
