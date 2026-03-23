@@ -29,7 +29,7 @@ spec:
   replication: true
 
   # Persistence — AOF every 1 second
-  persistence: aofEveryOneSecond
+  persistence: aofEverySecond
 
   # TLS off by default
   tlsMode: disabled

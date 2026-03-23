@@ -48,6 +48,10 @@ data:
     bind 0.0.0.0
     protected-mode no
 
+    # Enable hostname resolution (required for k8s DNS names in Redis 7.x)
+    sentinel resolve-hostnames yes
+    sentinel announce-hostnames yes
+
     # Monitor the Redis primary
     # sentinel monitor <master-name> <ip> <port> <quorum>
     # The init container will substitute the actual primary IP
