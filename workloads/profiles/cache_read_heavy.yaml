@@ -3,6 +3,7 @@ workload:
   description: "Product catalog cache simulation — 90/10 read/write ratio"
 
   connection:
+    connection_mode: "standalone"
     host: "localhost"
     port: 6379
     password: "${REDIS_PASSWORD}"
