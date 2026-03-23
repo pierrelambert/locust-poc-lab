@@ -172,7 +172,7 @@ class StreamIngestUser(User):
         with redis_command_timer("XREADGROUP", key=key):
             messages = self.client.xreadgroup(
                 group_name, self.consumer_name,
-                {key: ">"}, count=10, block=0,
+                {key: ">"}, count=10, block=100,
             )
         # ACK received messages
         if messages:

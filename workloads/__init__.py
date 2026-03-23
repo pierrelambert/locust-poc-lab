@@ -1,0 +1,2 @@
+"""Locust workloads package."""
+
