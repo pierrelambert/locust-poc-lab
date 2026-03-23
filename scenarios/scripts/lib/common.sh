@@ -111,6 +111,55 @@ wait_for_locust() {
     fi
 }
 
+# ── Canary writer helpers ─────────────────────────────────────────────────────
+CANARY_PID=""
+CANARY_RATE="${CANARY_RATE:-10}"
+
+start_canary() {
+    local repo_root
+    repo_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$0")/../..")"
+    local canary_script="${repo_root}/tooling/canary_writer.py"
+    if [[ ! -f "${canary_script}" ]]; then
+        log_warn "Canary writer not found at ${canary_script} — skipping"
+        return 0
+    fi
+    local canary_args=(--output-dir "${RUN_DIR}" --rate "${CANARY_RATE}"
+        --host "${CANARY_HOST:-localhost}" --port "${CANARY_PORT:-6379}"
+        --connection-mode "${CANARY_MODE:-standalone}")
+    [[ -n "${CANARY_PASSWORD:-}" ]] && canary_args+=(--password "${CANARY_PASSWORD}")
+    [[ "${CANARY_SSL:-false}" == "true" ]] && canary_args+=(--ssl)
+    log_info "Starting canary writer (rate=${CANARY_RATE} Hz)"
+    PYTHONPATH="${repo_root}" python3 "${canary_script}" "${canary_args[@]}" \
+        > "${RUN_DIR}/canary_stdout.log" 2>&1 &
+    CANARY_PID=$!
+    log_ok "Canary writer started (PID: ${CANARY_PID})"
+}
+
+stop_canary() {
+    if [[ -n "${CANARY_PID}" ]] && kill -0 "${CANARY_PID}" 2>/dev/null; then
+        log_info "Stopping canary writer (PID: ${CANARY_PID})..."
+        kill "${CANARY_PID}" 2>/dev/null || true
+        wait "${CANARY_PID}" 2>/dev/null || true
+        log_ok "Canary writer stopped"
+    fi
+    CANARY_PID=""
+
+    # Run consistency check if canary log exists
+    local repo_root
+    repo_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$0")/../..")"
+    local canary_log="${RUN_DIR}/canary_writes.jsonl"
+    if [[ -f "${canary_log}" ]]; then
+        log_info "Running consistency checker..."
+        PYTHONPATH="${repo_root}" python3 -m tooling.consistency_checker \
+            --host "${CANARY_HOST:-localhost}" --port "${CANARY_PORT:-6379}" \
+            --connection-mode "${CANARY_MODE:-standalone}" \
+            --canary-log "${canary_log}" 2>&1 || log_warn "Consistency checker failed"
+        log_info "Running RTO/RPO reporter..."
+        PYTHONPATH="${repo_root}" python3 -m tooling.rto_rpo_report "${RUN_DIR}" 2>&1 \
+            || log_warn "RTO/RPO reporter failed"
+    fi
+}
+
 EVENTS_FILE=""
 init_events_log() { EVENTS_FILE="${RUN_DIR}/events.jsonl"; touch "${EVENTS_FILE}"; }
 
@@ -402,6 +451,6 @@ SUMEOF
     log_ok "Evidence exported to ${RUN_DIR}"
 }
 
-cleanup() { stop_locust; log_info "Cleanup complete"; }
+cleanup() { stop_canary; stop_locust; log_info "Cleanup complete"; }
 trap cleanup EXIT
 
