@@ -10,6 +10,11 @@
 .PHONY: k8s-up k8s-down k8s-status
 .PHONY: obs-up obs-down obs-status
 .PHONY: validate cleanup-all
+.PHONY: k8s-sentinel-bitnami-up k8s-sentinel-bitnami-down k8s-sentinel-bitnami-test
+.PHONY: k8s-sentinel-opstree-up k8s-sentinel-opstree-down k8s-sentinel-opstree-test
+.PHONY: k8s-cluster-bitnami-up k8s-cluster-bitnami-down k8s-cluster-bitnami-test
+.PHONY: k8s-cluster-opstree-up k8s-cluster-opstree-down k8s-cluster-opstree-test
+.PHONY: k8s-comparison k8s-comparison-cleanup
 
 COMPOSE = docker compose
 
@@ -165,6 +170,49 @@ k8s-scenario-baseline: ## Run k8s baseline scenario (requires k8s-oss-up). Usage
 
 k8s-scenario-primary-kill: ## Run k8s primary kill scenario (requires k8s-oss-up). Usage: make k8s-scenario-primary-kill LOCUST_FILE=workloads/locustfiles/cache_read_heavy.py
 	@bash scenarios/k8s/02_primary_kill.sh
+
+# ── K8s OSS Comparison Variants ──────────────────────────────────────
+k8s-sentinel-bitnami-up: ## Deploy Redis Sentinel (Bitnami) on k8s
+	@bash infra/k8s/oss-sentinel-bitnami/deploy.sh
+
+k8s-sentinel-bitnami-down: ## Tear down Redis Sentinel (Bitnami)
+	@bash infra/k8s/oss-sentinel-bitnami/teardown.sh
+
+k8s-sentinel-bitnami-test: ## Run failover test for Sentinel (Bitnami)
+	@bash infra/k8s/oss-sentinel-bitnami/test-failover.sh
+
+k8s-sentinel-opstree-up: ## Deploy Redis Sentinel (Opstree) on k8s
+	@bash infra/k8s/oss-sentinel-opstree/deploy.sh
+
+k8s-sentinel-opstree-down: ## Tear down Redis Sentinel (Opstree)
+	@bash infra/k8s/oss-sentinel-opstree/teardown.sh
+
+k8s-sentinel-opstree-test: ## Run failover test for Sentinel (Opstree)
+	@bash infra/k8s/oss-sentinel-opstree/test-failover.sh
+
+k8s-cluster-bitnami-up: ## Deploy Redis Cluster (Bitnami) on k8s
+	@bash infra/k8s/oss-cluster-bitnami/deploy.sh
+
+k8s-cluster-bitnami-down: ## Tear down Redis Cluster (Bitnami)
+	@bash infra/k8s/oss-cluster-bitnami/teardown.sh
+
+k8s-cluster-bitnami-test: ## Run failover test for Cluster (Bitnami)
+	@bash infra/k8s/oss-cluster-bitnami/test-failover.sh
+
+k8s-cluster-opstree-up: ## Deploy Redis Cluster (Opstree) on k8s
+	@bash infra/k8s/oss-cluster-opstree/deploy.sh
+
+k8s-cluster-opstree-down: ## Tear down Redis Cluster (Opstree)
+	@bash infra/k8s/oss-cluster-opstree/teardown.sh
+
+k8s-cluster-opstree-test: ## Run failover test for Cluster (Opstree)
+	@bash infra/k8s/oss-cluster-opstree/test-failover.sh
+
+k8s-comparison: ## Run full k8s OSS comparison (deploy + test all variants)
+	@bash infra/k8s/run-k8s-comparison.sh
+
+k8s-comparison-cleanup: ## Tear down all k8s OSS comparison variants
+	@bash infra/k8s/cleanup-all.sh
 
 # ── Validation & Cleanup ─────────────────────────────────────────────
 validate: ## Validate all project artifacts (Compose, Python, Bash, YAML, Makefile)
