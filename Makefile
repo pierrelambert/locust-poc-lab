@@ -14,7 +14,8 @@ COMPOSE = docker compose
 
 # --- k8s Configuration ---
 RE_OPERATOR_VERSION ?= v7.8.2-6
-RE_OPERATOR_BUNDLE ?= https://raw.githubusercontent.com/RedisLabs/redis-enterprise-k8s-docs/$(RE_OPERATOR_VERSION)/bundle.yaml
+RE_OPERATOR_BUNDLE_REMOTE ?= https://raw.githubusercontent.com/RedisLabs/redis-enterprise-k8s-docs/$(RE_OPERATOR_VERSION)/bundle.yaml
+RE_OPERATOR_BUNDLE ?= infra/k8s/re-operator/operator-bundle.yaml
 RE_NAMESPACE ?= redis-enterprise
 OSS_NAMESPACE ?= redis-oss
 
@@ -22,8 +23,8 @@ help: ## Show available targets
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-25s\033[0m %s\n", $$1, $$2}'
 
-setup: ## Install Python dependencies
-	pip install -r requirements.txt
+setup: ## Bootstrap environment (prerequisites + venv + pinned deps)
+	@bash scripts/bootstrap.sh
 
 lint: ## Run linters
 	@echo "TODO: configure linters"
