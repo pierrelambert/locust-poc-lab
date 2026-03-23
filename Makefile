@@ -1,5 +1,6 @@
 .PHONY: help setup lint clean export-summary test-smoke
 .PHONY: re-up re-down re-status
+.PHONY: k8s-scenario-baseline k8s-scenario-primary-kill
 .PHONY: oss-sentinel-up oss-sentinel-down oss-sentinel-status
 .PHONY: oss-cluster-up oss-cluster-down oss-cluster-status
 .PHONY: vm-up vm-down vm-status
@@ -157,6 +158,13 @@ obs-down: ## Stop observability stack and remove containers
 
 obs-status: ## Show observability stack container status
 	$(COMPOSE) -f observability/docker-compose.yml -p obs-stack ps
+
+# ── k8s Scenario Targets ─────────────────────────────────────────────
+k8s-scenario-baseline: ## Run k8s baseline scenario (requires k8s-oss-up). Usage: make k8s-scenario-baseline LOCUST_FILE=workloads/locustfiles/cache_read_heavy.py
+	@bash scenarios/k8s/01_baseline.sh
+
+k8s-scenario-primary-kill: ## Run k8s primary kill scenario (requires k8s-oss-up). Usage: make k8s-scenario-primary-kill LOCUST_FILE=workloads/locustfiles/cache_read_heavy.py
+	@bash scenarios/k8s/02_primary_kill.sh
 
 # ── Validation & Cleanup ─────────────────────────────────────────────
 validate: ## Validate all project artifacts (Compose, Python, Bash, YAML, Makefile)
