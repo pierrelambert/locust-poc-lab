@@ -25,3 +25,12 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Python
+*.pyc
+__pycache__/
+.venv/
+
+# Results (run-specific output)
+results/
+!results/.gitkeep

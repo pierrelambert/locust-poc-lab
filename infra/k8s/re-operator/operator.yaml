@@ -1,0 +1,41 @@
+# Redis Enterprise Operator deployment
+#
+# This file installs the Redis Enterprise Operator using the official bundle.
+# In production, use the versioned bundle from Redis; this file provides a
+# local-lab-friendly wrapper that applies the upstream bundle.
+#
+# The operator watches the redis-enterprise namespace for REC and REDB CRs.
+#
+# Prerequisites:
+#   - Kubernetes cluster with at least 3 worker nodes
+#   - kubectl configured to the target cluster
+#
+# To install the operator manually:
+#   VERSION=v7.8.2-6
+#   kubectl apply -f https://raw.githubusercontent.com/RedisLabs/redis-enterprise-k8s-docs/${VERSION}/bundle.yaml \
+#     -n redis-enterprise
+#
+# The Makefile target `k8s-re-up` automates this.
+
+---
+# ServiceAccount for the operator
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: redis-enterprise-operator
+  namespace: redis-enterprise
+  labels:
+    app.kubernetes.io/part-of: locust-poc-lab
+    app.kubernetes.io/component: operator
+
+---
+# Note: In a real deployment, the operator bundle from Redis includes:
+#   - CustomResourceDefinitions (REC, REDB, REAADB, RErc, etc.)
+#   - ClusterRole and ClusterRoleBinding
+#   - Operator Deployment
+#
+# For the POC lab, we apply the upstream bundle directly.
+# This file serves as documentation and a placeholder for any local overrides.
+#
+# See: https://docs.redis.com/latest/kubernetes/deployment/quick-start/
+

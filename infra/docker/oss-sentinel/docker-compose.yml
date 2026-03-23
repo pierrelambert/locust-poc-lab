@@ -1,0 +1,121 @@
+# OSS Redis with Sentinel — 1 primary + 2 replicas + 3 Sentinels (VM comparison path)
+# Architecture #3 from TOPOLOGY_MATRIX.md
+#
+# Resource budget: ~3 vCPU + Sentinels / ~6 GB + Sentinels (fits Docker Desktop 16 GB)
+# Persistence: AOF every 1 sec
+# TLS: off by default
+#
+# Usage:
+#   docker compose up -d
+
+x-redis-common: &redis-common
+  image: redis:7-alpine
+  restart: unless-stopped
+  networks:
+    - sentinel-net
+
+services:
+  # ── Redis data nodes ──────────────────────────────────────────────
+  redis-primary:
+    <<: *redis-common
+    container_name: redis-primary
+    hostname: redis-primary
+    ports:
+      - "6379:6379"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 2g
+    volumes:
+      - redis-primary-data:/data
+      - ./conf/redis-primary.conf:/usr/local/etc/redis/redis.conf:ro
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+
+  redis-replica1:
+    <<: *redis-common
+    container_name: redis-replica1
+    hostname: redis-replica1
+    depends_on:
+      - redis-primary
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 2g
+    volumes:
+      - redis-replica1-data:/data
+      - ./conf/redis-replica.conf:/usr/local/etc/redis/redis.conf:ro
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+
+  redis-replica2:
+    <<: *redis-common
+    container_name: redis-replica2
+    hostname: redis-replica2
+    depends_on:
+      - redis-primary
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 2g
+    volumes:
+      - redis-replica2-data:/data
+      - ./conf/redis-replica.conf:/usr/local/etc/redis/redis.conf:ro
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+
+  # ── Sentinel nodes ────────────────────────────────────────────────
+  sentinel1:
+    <<: *redis-common
+    container_name: sentinel1
+    hostname: sentinel1
+    depends_on:
+      - redis-primary
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128m
+    volumes:
+      - ./conf/sentinel.conf:/tmp/sentinel.conf:ro
+    entrypoint: ["/bin/sh", "-c", "cp /tmp/sentinel.conf /etc/sentinel.conf && redis-sentinel /etc/sentinel.conf"]
+
+  sentinel2:
+    <<: *redis-common
+    container_name: sentinel2
+    hostname: sentinel2
+    depends_on:
+      - redis-primary
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128m
+    volumes:
+      - ./conf/sentinel.conf:/tmp/sentinel.conf:ro
+    entrypoint: ["/bin/sh", "-c", "cp /tmp/sentinel.conf /etc/sentinel.conf && redis-sentinel /etc/sentinel.conf"]
+
+  sentinel3:
+    <<: *redis-common
+    container_name: sentinel3
+    hostname: sentinel3
+    depends_on:
+      - redis-primary
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128m
+    volumes:
+      - ./conf/sentinel.conf:/tmp/sentinel.conf:ro
+    entrypoint: ["/bin/sh", "-c", "cp /tmp/sentinel.conf /etc/sentinel.conf && redis-sentinel /etc/sentinel.conf"]
+
+volumes:
+  redis-primary-data:
+  redis-replica1-data:
+  redis-replica2-data:
+
+networks:
+  sentinel-net:
+    driver: bridge
+

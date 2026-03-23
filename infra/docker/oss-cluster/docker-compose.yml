@@ -1,0 +1,102 @@
+# OSS Redis Cluster — 6 nodes: 3 primaries + 3 replicas (VM comparison path)
+# Architecture #4 from TOPOLOGY_MATRIX.md
+#
+# Resource budget: 6 vCPU / 12 GB RAM total (fits Docker Desktop 16 GB)
+# Persistence: AOF every 1 sec
+# TLS: off by default
+#
+# Usage:
+#   docker compose up -d
+#   # After all nodes are healthy, run the cluster-create command:
+#   docker exec redis-node1 redis-cli --cluster create \
+#     redis-node1:6379 redis-node2:6379 redis-node3:6379 \
+#     redis-node4:6379 redis-node5:6379 redis-node6:6379 \
+#     --cluster-replicas 1 --cluster-yes
+
+x-redis-node: &redis-node
+  image: redis:7-alpine
+  restart: unless-stopped
+  deploy:
+    resources:
+      limits:
+        cpus: "1.0"
+        memory: 2g
+  volumes:
+    - ./conf/redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+  command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+  networks:
+    - cluster-net
+
+services:
+  redis-node1:
+    <<: *redis-node
+    container_name: redis-node1
+    hostname: redis-node1
+    ports:
+      - "7001:6379"
+    volumes:
+      - redis-node1-data:/data
+      - ./conf/redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+
+  redis-node2:
+    <<: *redis-node
+    container_name: redis-node2
+    hostname: redis-node2
+    ports:
+      - "7002:6379"
+    volumes:
+      - redis-node2-data:/data
+      - ./conf/redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+
+  redis-node3:
+    <<: *redis-node
+    container_name: redis-node3
+    hostname: redis-node3
+    ports:
+      - "7003:6379"
+    volumes:
+      - redis-node3-data:/data
+      - ./conf/redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+
+  redis-node4:
+    <<: *redis-node
+    container_name: redis-node4
+    hostname: redis-node4
+    ports:
+      - "7004:6379"
+    volumes:
+      - redis-node4-data:/data
+      - ./conf/redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+
+  redis-node5:
+    <<: *redis-node
+    container_name: redis-node5
+    hostname: redis-node5
+    ports:
+      - "7005:6379"
+    volumes:
+      - redis-node5-data:/data
+      - ./conf/redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+
+  redis-node6:
+    <<: *redis-node
+    container_name: redis-node6
+    hostname: redis-node6
+    ports:
+      - "7006:6379"
+    volumes:
+      - redis-node6-data:/data
+      - ./conf/redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+
+volumes:
+  redis-node1-data:
+  redis-node2-data:
+  redis-node3-data:
+  redis-node4-data:
+  redis-node5-data:
+  redis-node6-data:
+
+networks:
+  cluster-net:
+    driver: bridge
+

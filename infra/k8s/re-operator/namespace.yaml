@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: redis-enterprise
+  labels:
+    app.kubernetes.io/part-of: locust-poc-lab
+    lab/architecture: "2-re-operator"
+

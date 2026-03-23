@@ -1,0 +1,67 @@
+# Redis and Sentinel configuration for Architecture #5
+#
+# Topology matrix spec:
+#   - 3 Redis pods (1 primary + 2 replicas)
+#   - 3 Sentinel pods
+#   - 1 vCPU, 2 GB RAM per pod
+#   - AOF every 1 sec
+#   - TLS off
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: redis-oss
+  labels:
+    app.kubernetes.io/part-of: locust-poc-lab
+    lab/architecture: "5-oss-k8s"
+data:
+  redis.conf: |
+    # Persistence — AOF every 1 second (matches topology matrix)
+    appendonly yes
+    appendfsync everysec
+    no-appendfsync-on-rewrite no
+
+    # Memory
+    maxmemory 1536mb
+    maxmemory-policy noeviction
+
+    # Networking
+    bind 0.0.0.0
+    protected-mode no
+    port 6379
+
+    # TLS off (topology matrix default)
+    # tls-port 0
+
+    # Replication tuning
+    repl-diskless-sync yes
+    repl-diskless-sync-delay 5
+    repl-timeout 60
+
+    # Logging
+    loglevel notice
+
+  sentinel.conf: |
+    # Sentinel configuration
+    port 26379
+    bind 0.0.0.0
+    protected-mode no
+
+    # Enable hostname resolution (required for k8s DNS names in Redis 7.x)
+    sentinel resolve-hostnames yes
+    sentinel announce-hostnames yes
+
+    # Monitor the Redis primary
+    # sentinel monitor <master-name> <ip> <port> <quorum>
+    # The init container will substitute the actual primary IP
+    sentinel monitor mymaster redis-0.redis-headless.redis-oss.svc.cluster.local 6379 2
+
+    # Failover timing
+    sentinel down-after-milliseconds mymaster 5000
+    sentinel failover-timeout mymaster 10000
+    sentinel parallel-syncs mymaster 1
+
+    # Logging
+    loglevel notice
+
