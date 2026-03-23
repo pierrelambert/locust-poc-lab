@@ -14,7 +14,7 @@
 | Docker and Docker Compose installed | `docker compose version` |
 | Python 3.10+ | `python3 --version` |
 | Git clone of this repo | `git status` in repo root |
-| ~8 GB free RAM (for all containers) | `docker info` |
+| Docker Desktop allocated ≥16 GB RAM | Docker Desktop → Settings → Resources (see [Troubleshooting](TROUBLESHOOTING.md#1-docker-resource-issues)) |
 
 ---
 
