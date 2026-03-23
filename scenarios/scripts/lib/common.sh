@@ -113,10 +113,35 @@ wait_for_locust() {
 
 EVENTS_FILE=""
 init_events_log() { EVENTS_FILE="${RUN_DIR}/events.jsonl"; touch "${EVENTS_FILE}"; }
+
+# ── Grafana annotation helper (non-blocking, best-effort) ────────────────────
+# Pushes an annotation to Grafana via the EventAnnotator.
+# Silently skips if Grafana is unreachable or python3 is unavailable.
+GRAFANA_URL="${GRAFANA_URL:-http://localhost:3000}"
+GRAFANA_ANNOTATE="${GRAFANA_ANNOTATE:-true}"
+
+_grafana_annotate() {
+    local text="$1" tags="${2:-}"
+    [[ "${GRAFANA_ANNOTATE}" != "true" ]] && return 0
+    local repo_root
+    repo_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$0")/../..")"
+    python3 -c "
+import sys, os
+sys.path.insert(0, '${repo_root}')
+os.environ.setdefault('GRAFANA_URL', '${GRAFANA_URL}')
+from observability.annotator import EventAnnotator
+a = EventAnnotator()
+a.annotate('${text}', tags=[t for t in '${tags}'.split(',') if t])
+" >/dev/null 2>&1 &
+    # Fire-and-forget — don't wait for the background process
+}
+
 mark_event() {
     local event_name="$1" detail="${2:-}"
     echo "{\"timestamp\":\"$(ts_now)\",\"epoch\":$(ts_epoch),\"event\":\"${event_name}\",\"detail\":\"${detail}\"}" >> "${EVENTS_FILE}"
     log_info "Event marked: ${event_name} ${detail}"
+    # Push annotation to Grafana (non-blocking)
+    _grafana_annotate "${event_name}: ${detail}" "${event_name}"
 }
 
 capture_redis_info() {

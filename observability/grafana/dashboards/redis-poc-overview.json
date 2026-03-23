@@ -33,8 +33,8 @@
       },
       "targets": [
         {
-          "expr": "rate(redis_commands_processed_total[1m])",
-          "legendFormat": "Redis ops/sec (server)",
+          "expr": "rate(redis_commands_processed_total{topology=~\"$topology\"}[1m])",
+          "legendFormat": "{{topology}} ops/sec (server)",
           "refId": "A"
         },
         {
@@ -96,8 +96,8 @@
           "refId": "A"
         },
         {
-          "expr": "rate(redis_rejected_connections_total[1m])",
-          "legendFormat": "Rejected connections/sec",
+          "expr": "rate(redis_rejected_connections_total{topology=~\"$topology\"}[1m])",
+          "legendFormat": "{{topology}} rejected conn/sec",
           "refId": "B"
         }
       ]
@@ -117,13 +117,13 @@
       },
       "targets": [
         {
-          "expr": "redis_memory_used_bytes",
-          "legendFormat": "Used memory",
+          "expr": "redis_memory_used_bytes{topology=~\"$topology\"}",
+          "legendFormat": "{{topology}} used memory",
           "refId": "A"
         },
         {
-          "expr": "redis_memory_max_bytes",
-          "legendFormat": "Max memory",
+          "expr": "redis_memory_max_bytes{topology=~\"$topology\"}",
+          "legendFormat": "{{topology}} max memory",
           "refId": "B"
         }
       ]
@@ -143,13 +143,13 @@
       },
       "targets": [
         {
-          "expr": "redis_connected_clients",
-          "legendFormat": "Connected clients",
+          "expr": "redis_connected_clients{topology=~\"$topology\"}",
+          "legendFormat": "{{topology}} connected clients",
           "refId": "A"
         },
         {
-          "expr": "redis_blocked_clients",
-          "legendFormat": "Blocked clients",
+          "expr": "redis_blocked_clients{topology=~\"$topology\"}",
+          "legendFormat": "{{topology}} blocked clients",
           "refId": "B"
         }
       ]
@@ -169,18 +169,18 @@
       },
       "targets": [
         {
-          "expr": "redis_replication_backlog_bytes",
-          "legendFormat": "Replication backlog",
+          "expr": "redis_replication_backlog_bytes{topology=~\"$topology\"}",
+          "legendFormat": "{{topology}} repl backlog",
           "refId": "A"
         },
         {
-          "expr": "redis_connected_slaves",
-          "legendFormat": "Connected replicas",
+          "expr": "redis_connected_slaves{topology=~\"$topology\"}",
+          "legendFormat": "{{topology}} connected replicas",
           "refId": "B"
         },
         {
-          "expr": "redis_replica_repl_offset",
-          "legendFormat": "Replica offset",
+          "expr": "redis_replica_repl_offset{topology=~\"$topology\"}",
+          "legendFormat": "{{topology}} replica offset",
           "refId": "C"
         }
       ]
@@ -189,7 +189,42 @@
   "schemaVersion": 39,
   "tags": ["redis", "poc-lab"],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "allValue": ".*",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "definition": "label_values(redis_up, topology)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Topology",
+        "multi": true,
+        "name": "topology",
+        "query": { "query": "label_values(redis_up, topology)", "refId": "topology" },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": { "selected": false, "text": "", "value": "" },
+        "hide": 0,
+        "label": "Scenario",
+        "name": "scenario",
+        "options": [],
+        "query": "",
+        "type": "textbox"
+      },
+      {
+        "current": { "selected": false, "text": "", "value": "" },
+        "hide": 0,
+        "label": "Run ID",
+        "name": "run_id",
+        "options": [],
+        "query": "",
+        "type": "textbox"
+      }
+    ]
   },
   "time": { "from": "now-30m", "to": "now" },
   "timepicker": {},
