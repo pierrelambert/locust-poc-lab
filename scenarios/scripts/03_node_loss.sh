@@ -151,9 +151,9 @@ main() {
                 fi
                 ;;
             re)
-                log_info "RE recovery: check rladmin status (elapsed: ${recovery_elapsed}s)"
-                recovery_confirmed=true
-                mark_event "recovery_detected" "elapsed=${recovery_elapsed}s assumed"
+                if wait_for_re_recovery "${max_recovery_wait}"; then
+                    recovery_confirmed=true
+                fi
                 break
                 ;;
         esac

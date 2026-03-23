@@ -110,6 +110,14 @@ main() {
 
     # Poll for a new primary to become available
     local new_primary_found=false
+
+    # For RE, capture the pre-disruption master node for comparison
+    local re_pre_master_node=""
+    if [[ "${PLATFORM}" == "re" ]]; then
+        re_pre_master_node=$(re_get_master_node)
+        log_info "RE pre-disruption master node: ${re_pre_master_node}"
+    fi
+
     while [[ $recovery_elapsed -lt $max_recovery_wait ]]; do
         sleep 2
         recovery_elapsed=$(( $(ts_epoch) - recovery_start ))
@@ -139,9 +147,9 @@ main() {
                 fi
                 ;;
             re)
-                log_info "RE failover detection: check rladmin status (elapsed: ${recovery_elapsed}s)"
-                new_primary_found=true
-                mark_event "failover_detected" "elapsed=${recovery_elapsed}s assumed"
+                if wait_for_re_failover "${max_recovery_wait}" "${re_pre_master_node}"; then
+                    new_primary_found=true
+                fi
                 break
                 ;;
         esac

@@ -138,9 +138,19 @@ main() {
                     mark_event "failover_triggered" "via=cluster_failover"
                     ;;
                 re)
-                    log_info "RE: trigger failover via rladmin or REST API"
-                    operator_steps=$((operator_steps + 1))
-                    mark_event "failover_triggered" "via=re_manual"
+                    log_info "RE: triggering failover via rladmin..."
+                    local re_db_uid
+                    re_db_uid=$(_re_get_db_uid)
+                    if [[ -n "${re_db_uid}" ]]; then
+                        _re_rladmin failover db "${RE_DB_NAME}" || log_warn "rladmin failover command returned non-zero"
+                        operator_steps=$((operator_steps + 1))
+                        mark_event "failover_triggered" "via=rladmin db_uid=${re_db_uid}"
+                    else
+                        log_warn "Could not find RE database '${RE_DB_NAME}' — attempting failover by name"
+                        _re_rladmin failover db "${RE_DB_NAME}" || true
+                        operator_steps=$((operator_steps + 1))
+                        mark_event "failover_triggered" "via=rladmin db_name=${RE_DB_NAME}"
+                    fi
                     ;;
             esac
             ;;
@@ -180,9 +190,19 @@ main() {
                     mark_event "node_added" "container=${NEW_NODE_CONTAINER}"
                     ;;
                 re)
-                    log_info "RE: add node via rladmin or REST API"
+                    log_info "RE: adding node via REST API..."
+                    # In RE, nodes are already part of the cluster; we verify the node count
+                    local re_node_count
+                    re_node_count=$(_re_api GET "/v1/nodes" 2>/dev/null | python3 -c "
+import sys, json
+try:
+    nodes = json.load(sys.stdin)
+    print(len(nodes))
+except: print('0')
+" 2>/dev/null)
                     operator_steps=$((operator_steps + 1))
-                    mark_event "node_added" "via=re_manual"
+                    mark_event "node_added" "via=re_api node_count=${re_node_count}"
+                    log_info "RE cluster has ${re_node_count} nodes"
                     ;;
             esac
             ;;
@@ -218,8 +238,9 @@ main() {
                 fi
                 ;;
             re)
-                recovery_confirmed=true
-                mark_event "recovery_detected" "elapsed=${recovery_elapsed}s assumed"
+                if wait_for_re_recovery "${max_recovery_wait}"; then
+                    recovery_confirmed=true
+                fi
                 break
                 ;;
         esac

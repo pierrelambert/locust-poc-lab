@@ -154,8 +154,15 @@ main() {
                 mark_event "health_check" "node=${node} ${cluster_state}"
                 ;;
             re)
-                log_info "RE health check: verify via rladmin status"
-                mark_event "health_check" "node=${node} re_check_manual"
+                if re_cluster_healthy; then
+                    log_ok "RE cluster healthy after node ${node} restart"
+                    mark_event "health_check" "node=${node} re_cluster_healthy=true"
+                else
+                    log_warn "RE cluster not fully healthy after node ${node} restart"
+                    mark_event "health_check" "node=${node} re_cluster_healthy=false"
+                    # Wait for recovery before proceeding to next node
+                    wait_for_re_recovery 60 || log_warn "RE recovery timed out for node ${node}"
+                fi
                 ;;
         esac
 
