@@ -1,0 +1,38 @@
+[Unit]
+Description=Locust POC Lab — Load Generator
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=locust-poc
+Group=locust-poc
+WorkingDirectory=/opt/locust-poc
+
+# Environment
+Environment="PATH=/opt/locust-poc/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONPATH=/opt/locust-poc"
+EnvironmentFile=-/etc/locust-poc/environment
+
+# Command — run Locust in web-UI mode
+ExecStart=/opt/locust-poc/venv/bin/locust \
+    -f ${LOCUST_FILE:-/opt/locust-poc/workloads/locustfiles/cache_read_heavy.py} \
+    --host=${REDIS_HOST:-redis://localhost:6379} \
+    --web-port=${LOCUST_WEB_PORT:-8089}
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=0
+
+# Logging
+StandardOutput=append:/var/log/locust-poc/locust.log
+StandardError=append:/var/log/locust-poc/locust.log
+SyslogIdentifier=locust-poc
+
+# Resource limits
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+

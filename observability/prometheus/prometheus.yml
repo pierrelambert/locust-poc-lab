@@ -6,12 +6,18 @@ global:
   evaluation_interval: 5s
 
 scrape_configs:
-  # ── Redis Exporter (one per Redis topology) ──────────────────────
+  # ── Redis Exporters (one per Redis topology) ─────────────────────
   - job_name: "redis-exporter"
     static_configs:
-      - targets: ["redis-exporter:9121"]
+      - targets: ["redis-exporter-oss-sentinel:9121"]
         labels:
-          stack: "oss-sentinel"
+          topology: "oss-sentinel"
+      - targets: ["redis-exporter-oss-cluster:9121"]
+        labels:
+          topology: "oss-cluster"
+      - targets: ["redis-exporter-re:9121"]
+        labels:
+          topology: "re-cluster"
     metrics_path: /metrics
 
   # ── Locust metrics (via locust-exporter or built-in /stats) ─────

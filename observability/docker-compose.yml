@@ -46,16 +46,40 @@ services:
     networks:
       - obs-net
 
-  # ── Redis Exporter ──────────────────────────────────────────────
-  redis-exporter:
+  # ── Redis Exporters (one per topology) ──────────────────────────
+  redis-exporter-oss-sentinel:
     image: oliver006/redis_exporter:v1.62.0
-    container_name: obs-redis-exporter
-    hostname: redis-exporter
+    container_name: obs-redis-exporter-oss-sentinel
+    hostname: redis-exporter-oss-sentinel
     restart: unless-stopped
     ports:
       - "9121:9121"
     environment:
-      - REDIS_ADDR=${REDIS_ADDR:-redis://redis-primary:6379}
+      - REDIS_ADDR=${REDIS_ADDR_OSS_SENTINEL:-redis://redis-primary:6379}
+    networks:
+      - obs-net
+
+  redis-exporter-oss-cluster:
+    image: oliver006/redis_exporter:v1.62.0
+    container_name: obs-redis-exporter-oss-cluster
+    hostname: redis-exporter-oss-cluster
+    restart: unless-stopped
+    ports:
+      - "9122:9121"
+    environment:
+      - REDIS_ADDR=${REDIS_ADDR_OSS_CLUSTER:-redis://redis-node1:6379}
+    networks:
+      - obs-net
+
+  redis-exporter-re:
+    image: oliver006/redis_exporter:v1.62.0
+    container_name: obs-redis-exporter-re
+    hostname: redis-exporter-re
+    restart: unless-stopped
+    ports:
+      - "9123:9121"
+    environment:
+      - REDIS_ADDR=${REDIS_ADDR_RE:-redis://re-node1:12000}
     networks:
       - obs-net
 

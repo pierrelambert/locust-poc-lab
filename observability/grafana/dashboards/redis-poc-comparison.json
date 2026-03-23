@@ -1,0 +1,157 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 2,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Throughput Comparison (ops/sec)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "rate(redis_commands_processed_total{topology=\"re-cluster\"}[1m])",
+          "legendFormat": "RE — ops/sec",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(redis_commands_processed_total{topology=\"oss-sentinel\"}[1m])",
+          "legendFormat": "OSS Sentinel — ops/sec",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(redis_commands_processed_total{topology=\"oss-cluster\"}[1m])",
+          "legendFormat": "OSS Cluster — ops/sec",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "title": "Latency p99 Comparison",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 5 }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "redis_latency_percentiles_usec{topology=\"re-cluster\",quantile=\"0.99\"} / 1000",
+          "legendFormat": "RE — p99",
+          "refId": "A"
+        },
+        {
+          "expr": "redis_latency_percentiles_usec{topology=\"oss-sentinel\",quantile=\"0.99\"} / 1000",
+          "legendFormat": "OSS Sentinel — p99",
+          "refId": "B"
+        },
+        {
+          "expr": "redis_latency_percentiles_usec{topology=\"oss-cluster\",quantile=\"0.99\"} / 1000",
+          "legendFormat": "OSS Cluster — p99",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "title": "Error Rate Comparison",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 3,
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15 },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "rate(redis_rejected_connections_total{topology=\"re-cluster\"}[1m])",
+          "legendFormat": "RE — rejected conn/sec",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(redis_rejected_connections_total{topology=\"oss-sentinel\"}[1m])",
+          "legendFormat": "OSS Sentinel — rejected conn/sec",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(redis_rejected_connections_total{topology=\"oss-cluster\"}[1m])",
+          "legendFormat": "OSS Cluster — rejected conn/sec",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "title": "Recovery Time — Connected Clients",
+      "description": "Track client reconnection after failover to compare recovery speed across topologies",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "id": 4,
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "redis_connected_clients{topology=\"re-cluster\"}",
+          "legendFormat": "RE — clients",
+          "refId": "A"
+        },
+        {
+          "expr": "redis_connected_clients{topology=\"oss-sentinel\"}",
+          "legendFormat": "OSS Sentinel — clients",
+          "refId": "B"
+        },
+        {
+          "expr": "redis_connected_clients{topology=\"oss-cluster\"}",
+          "legendFormat": "OSS Cluster — clients",
+          "refId": "C"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["redis", "poc-lab", "comparison"],
+  "templating": { "list": [] },
+  "time": { "from": "now-30m", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Redis POC Lab — Topology Comparison",
+  "uid": "redis-poc-comparison",
+  "version": 1
+}

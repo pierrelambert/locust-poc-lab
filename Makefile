@@ -1,5 +1,6 @@
 .PHONY: help setup lint clean export-summary test-smoke
 .PHONY: re-up re-down re-status
+.PHONY: k8s-scenario-baseline k8s-scenario-primary-kill
 .PHONY: oss-sentinel-up oss-sentinel-down oss-sentinel-status
 .PHONY: oss-cluster-up oss-cluster-down oss-cluster-status
 .PHONY: vm-up vm-down vm-status
@@ -14,7 +15,8 @@ COMPOSE = docker compose
 
 # --- k8s Configuration ---
 RE_OPERATOR_VERSION ?= v7.8.2-6
-RE_OPERATOR_BUNDLE ?= https://raw.githubusercontent.com/RedisLabs/redis-enterprise-k8s-docs/$(RE_OPERATOR_VERSION)/bundle.yaml
+RE_OPERATOR_BUNDLE_REMOTE ?= https://raw.githubusercontent.com/RedisLabs/redis-enterprise-k8s-docs/$(RE_OPERATOR_VERSION)/bundle.yaml
+RE_OPERATOR_BUNDLE ?= infra/k8s/re-operator/operator-bundle.yaml
 RE_NAMESPACE ?= redis-enterprise
 OSS_NAMESPACE ?= redis-oss
 
@@ -22,8 +24,8 @@ help: ## Show available targets
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-25s\033[0m %s\n", $$1, $$2}'
 
-setup: ## Install Python dependencies
-	pip install -r requirements.txt
+setup: ## Bootstrap environment (prerequisites + venv + pinned deps)
+	@bash scripts/bootstrap.sh
 
 lint: ## Run linters
 	@echo "TODO: configure linters"
@@ -156,6 +158,13 @@ obs-down: ## Stop observability stack and remove containers
 
 obs-status: ## Show observability stack container status
 	$(COMPOSE) -f observability/docker-compose.yml -p obs-stack ps
+
+# ── k8s Scenario Targets ─────────────────────────────────────────────
+k8s-scenario-baseline: ## Run k8s baseline scenario (requires k8s-oss-up). Usage: make k8s-scenario-baseline LOCUST_FILE=workloads/locustfiles/cache_read_heavy.py
+	@bash scenarios/k8s/01_baseline.sh
+
+k8s-scenario-primary-kill: ## Run k8s primary kill scenario (requires k8s-oss-up). Usage: make k8s-scenario-primary-kill LOCUST_FILE=workloads/locustfiles/cache_read_heavy.py
+	@bash scenarios/k8s/02_primary_kill.sh
 
 # ── Validation & Cleanup ─────────────────────────────────────────────
 validate: ## Validate all project artifacts (Compose, Python, Bash, YAML, Makefile)

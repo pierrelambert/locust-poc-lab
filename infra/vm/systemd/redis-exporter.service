@@ -1,0 +1,35 @@
+[Unit]
+Description=Locust POC Lab — Redis Exporter (Prometheus metrics)
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=locust-poc
+Group=locust-poc
+WorkingDirectory=/opt/locust-poc
+
+# Environment
+EnvironmentFile=-/etc/locust-poc/environment
+
+# Command — oliver006/redis_exporter binary
+ExecStart=/usr/local/bin/redis_exporter \
+    --redis.addr=${REDIS_EXPORTER_ADDR:-redis://localhost:6379} \
+    --web.listen-address=:${REDIS_EXPORTER_PORT:-9121}
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=0
+
+# Logging
+StandardOutput=append:/var/log/locust-poc/redis-exporter.log
+StandardError=append:/var/log/locust-poc/redis-exporter.log
+SyslogIdentifier=redis-exporter
+
+# Resource limits
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+

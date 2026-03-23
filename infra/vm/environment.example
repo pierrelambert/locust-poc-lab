@@ -1,0 +1,30 @@
+# Locust POC Lab — VM Deployment Environment Configuration
+# Copy this file to /etc/locust-poc/environment and customise.
+
+# ── Redis Connection ─────────────────────────────────────────────────
+REDIS_HOST=redis://localhost:6379
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
+
+# ── TLS (optional) ──────────────────────────────────────────────────
+REDIS_SSL=false
+REDIS_SSL_CERT_PATH=/opt/locust-poc/certs/tls.crt
+REDIS_SSL_KEY_PATH=/opt/locust-poc/certs/tls.key
+REDIS_SSL_CA_PATH=/opt/locust-poc/certs/ca.crt
+REDIS_SNI_HOSTNAME=
+
+# ── Locust Configuration ────────────────────────────────────────────
+LOCUST_FILE=/opt/locust-poc/workloads/locustfiles/cache_read_heavy.py
+LOCUST_USERS=100
+LOCUST_SPAWN_RATE=10
+LOCUST_RUN_TIME=
+LOCUST_WEB_PORT=8089
+
+# ── Redis Exporter ──────────────────────────────────────────────────
+REDIS_EXPORTER_PORT=9121
+REDIS_EXPORTER_ADDR=redis://localhost:6379
+
+# ── Logging ─────────────────────────────────────────────────────────
+LOG_LEVEL=INFO
+
