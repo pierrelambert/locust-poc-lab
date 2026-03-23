@@ -60,6 +60,8 @@ Open Prometheus at **http://localhost:9090** and verify targets are UP.
 
 The baseline establishes normal SLA behavior. All later comparisons reference this.
 
+> 📖 **Runbook:** [Scenario 1 — Steady-State Baseline](../../scenarios/runbooks/01_baseline.md)
+
 ### 2.1 Run baseline on Redis Enterprise
 
 ```bash
@@ -121,6 +123,8 @@ Compare the two `run_summary.md` files side by side. Both platforms should show 
 ## Phase 3 — Inject a Primary Failure (25 minutes)
 
 This is the core HA proof. You will kill the primary Redis process and observe how each platform recovers.
+
+> 📖 **Runbook:** [Scenario 2 — Primary Process Kill](../../scenarios/runbooks/02_primary_kill.md)
 
 ### 3.1 Primary kill on Redis Enterprise
 
