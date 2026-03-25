@@ -21,7 +21,7 @@ def _compose(*args):
     return subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
 
-def _redis_cli(*args, port=6379):
+def _redis_cli(*args, port=6380):
     """Run redis-cli and return the result."""
     cmd = ["redis-cli", "-p", str(port), *args]
     return subprocess.run(cmd, capture_output=True, text=True, timeout=10)

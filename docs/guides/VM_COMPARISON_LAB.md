@@ -71,7 +71,7 @@ Edit `/etc/locust-poc/environment` on each VM:
 sudo vi /etc/locust-poc/environment
 ```
 
-Set `REDIS_HOST` to point to the local Redis instance.  For Redis Enterprise, use the database endpoint.  For OSS, use `redis://localhost:6379`.
+Set `REDIS_HOST` to point to the local Redis instance.  For Redis Enterprise, use the database endpoint.  For OSS, use `redis://localhost:6380`.
 
 Restart services after editing:
 
@@ -115,7 +115,7 @@ sudo -u locust-poc \
   PLATFORM=oss-sentinel \
   LOCUST_FILE=workloads/locustfiles/cache_read_heavy.py \
   WORKLOAD_PROFILE=workloads/profiles/cache_read_heavy.yaml \
-  LOCUST_HOST=redis://localhost:6379 \
+  LOCUST_HOST=redis://localhost:6380 \
   BASELINE_DURATION=600 \
   WARMUP_DURATION=60 \
   ./scenarios/scripts/01_baseline.sh

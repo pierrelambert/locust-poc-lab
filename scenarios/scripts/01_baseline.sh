@@ -41,7 +41,7 @@ main() {
     # Step 2: Verify dataset is primed (precondition)
     log_step 2 "Verify dataset is primed"
     local key_count
-    key_count=$(docker exec "${PRIMARY_CONTAINER}" redis-cli DBSIZE 2>/dev/null | grep -o '[0-9]*' || echo "0")
+    key_count=$(docker exec "${PRIMARY_CONTAINER}" redis-cli -p ${REDIS_CLI_PORT} DBSIZE 2>/dev/null | grep -o '[0-9]*' || echo "0")
     log_info "Current key count: ${key_count}"
     if [[ "${key_count}" -eq 0 ]]; then
         log_warn "Database is empty — ensure dataset is primed before running baseline"

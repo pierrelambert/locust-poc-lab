@@ -10,7 +10,8 @@ WARMUP_DURATION="${WARMUP_DURATION:-60}"
 POST_RECOVERY_DURATION="${POST_RECOVERY_DURATION:-300}"
 LOCUST_USERS="${LOCUST_USERS:-10}"
 LOCUST_SPAWN_RATE="${LOCUST_SPAWN_RATE:-2}"
-LOCUST_HOST="${LOCUST_HOST:-redis://localhost:6379}"
+LOCUST_HOST="${LOCUST_HOST:-redis://localhost:6380}"
+REDIS_CLI_PORT="${REDIS_CLI_PORT:-6379}"
 LOCUST_FILE="${LOCUST_FILE:-}"
 WORKLOAD_PROFILE="${WORKLOAD_PROFILE:-}"
 PLATFORM="${PLATFORM:-}"
@@ -49,7 +50,7 @@ check_environment() {
   "locust_spawn_rate": ${LOCUST_SPAWN_RATE},
   "locust_host": "${LOCUST_HOST}",
   "docker_compose_project": "${COMPOSE_PROJECT:-unknown}",
-  "redis_version": "$(docker exec "${PRIMARY_CONTAINER:-redis-primary}" redis-cli INFO server 2>/dev/null | grep redis_version | tr -d '\r' || echo 'unavailable')"
+  "redis_version": "$(docker exec "${PRIMARY_CONTAINER:-redis-primary}" redis-cli -p ${REDIS_CLI_PORT} INFO server 2>/dev/null | grep redis_version | tr -d '\r' || echo 'unavailable')"
 }
 ENVEOF
     log_ok "Environment metadata saved to ${env_file}"
@@ -72,7 +73,7 @@ wait_for_container() {
 wait_for_redis() {
     local container="$1" timeout="${2:-60}" elapsed=0
     log_info "Waiting for Redis PING on ${container} (timeout: ${timeout}s)..."
-    while ! docker exec "$container" redis-cli PING 2>/dev/null | grep -q PONG; do
+    while ! docker exec "$container" redis-cli -p ${REDIS_CLI_PORT} PING 2>/dev/null | grep -q PONG; do
         sleep 1; elapsed=$((elapsed + 1))
         [[ $elapsed -ge $timeout ]] && { log_error "Redis on ${container} did not respond within ${timeout}s"; return 1; }
     done
@@ -137,7 +138,7 @@ start_canary() {
         return 0
     fi
     local canary_args=(--output-dir "${RUN_DIR}" --rate "${CANARY_RATE}"
-        --host "${CANARY_HOST:-localhost}" --port "${CANARY_PORT:-6379}"
+        --host "${CANARY_HOST:-localhost}" --port "${CANARY_PORT:-6380}"
         --connection-mode "${CANARY_MODE:-standalone}")
     [[ -n "${CANARY_PASSWORD:-}" ]] && canary_args+=(--password "${CANARY_PASSWORD}")
     [[ "${CANARY_SSL:-false}" == "true" ]] && canary_args+=(--ssl)
@@ -172,7 +173,7 @@ stop_canary() {
         fi
         log_info "Running consistency checker..."
         PYTHONPATH="${repo_root}" "${python_bin}" -m tooling.consistency_checker \
-            --host "${CANARY_HOST:-localhost}" --port "${CANARY_PORT:-6379}" \
+            --host "${CANARY_HOST:-localhost}" --port "${CANARY_PORT:-6380}" \
             --connection-mode "${CANARY_MODE:-standalone}" \
             --canary-log "${canary_log}" 2>&1 || log_warn "Consistency checker failed"
         log_info "Running RTO/RPO reporter..."
@@ -217,7 +218,7 @@ mark_event() {
 capture_redis_info() {
     local container="$1" label="${2:-snapshot}"
     local outfile="${RUN_DIR}/redis_info_${label}_$(date '+%H%M%S').txt"
-    docker exec "$container" redis-cli INFO ALL > "${outfile}" 2>/dev/null || true
+    docker exec "$container" redis-cli -p ${REDIS_CLI_PORT} INFO ALL > "${outfile}" 2>/dev/null || true
     log_info "Redis INFO captured: ${outfile}"
 }
 
@@ -225,7 +226,7 @@ capture_topology() {
     local label="${1:-snapshot}"
     local outfile="${RUN_DIR}/topology_${label}.txt"
     case "${PLATFORM}" in
-        oss-cluster)  docker exec "${PRIMARY_CONTAINER:-redis-node1}" redis-cli CLUSTER NODES > "${outfile}" 2>/dev/null || true ;;
+        oss-cluster)  docker exec "${PRIMARY_CONTAINER:-redis-node1}" redis-cli -p ${REDIS_CLI_PORT} CLUSTER NODES > "${outfile}" 2>/dev/null || true ;;
         oss-sentinel) docker exec "${SENTINEL_CONTAINER:-sentinel1}" redis-cli -p 26379 SENTINEL masters > "${outfile}" 2>/dev/null || true ;;
         re)           capture_re_topology "${label}" ;;
     esac
