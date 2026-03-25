@@ -13,8 +13,8 @@
 #   BASELINE_DURATION       — Baseline run duration in seconds (default: 120)
 #   WARMUP_DURATION         — Warmup duration in seconds (default: 60)
 #   POST_RECOVERY_DURATION  — Post-recovery observation in seconds (default: 60)
-#   LOCUST_USERS            — Number of simulated users (default: 10)
-#   LOCUST_SPAWN_RATE       — User spawn rate (default: 2)
+#   LOCUST_USERS            — Number of simulated users (default: 50)
+#   LOCUST_SPAWN_RATE       — User spawn rate (default: 10)
 #   SKIP_RE                 — Set to "true" to skip RE scenarios
 #   SKIP_OSS                — Set to "true" to skip OSS Sentinel scenarios
 
@@ -27,8 +27,8 @@ cd "${REPO_ROOT}"
 export BASELINE_DURATION="${BASELINE_DURATION:-120}"
 export WARMUP_DURATION="${WARMUP_DURATION:-60}"
 export POST_RECOVERY_DURATION="${POST_RECOVERY_DURATION:-60}"
-export LOCUST_USERS="${LOCUST_USERS:-10}"
-export LOCUST_SPAWN_RATE="${LOCUST_SPAWN_RATE:-2}"
+export LOCUST_USERS="${LOCUST_USERS:-50}"
+export LOCUST_SPAWN_RATE="${LOCUST_SPAWN_RATE:-10}"
 export LOCUST_FILE="${LOCUST_FILE:-workloads/locustfiles/cache_read_heavy.py}"
 SKIP_RE="${SKIP_RE:-false}"
 SKIP_OSS="${SKIP_OSS:-false}"

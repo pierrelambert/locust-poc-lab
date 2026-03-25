@@ -29,8 +29,8 @@ workload:
   traffic_config:
     read_ratio: 90
     write_ratio: 10
-    think_time_min_ms: 5
-    think_time_max_ms: 20
+    think_time_min_ms: 1
+    think_time_max_ms: 5
     think_time_distribution: "uniform"
     target_rps: 10000
 
