@@ -314,6 +314,11 @@ EOF
 
 ok "Results assembled in ${DEMO_DIR}"
 
+# ── Step 8: Assemble polished result pack ────────────────────────────────
+info "Step 8: Assembling polished result pack..."
+PYTHONPATH="${REPO_ROOT}" python3 "${REPO_ROOT}/tooling/assemble_result_pack.py" "${DEMO_DIR}" \
+    >> "${LOG_FILE}" 2>&1 || warn "Result pack assembly failed (non-fatal)"
+
 # ── Final summary ─────────────────────────────────────────────────────────
 echo ""
 echo -e "${BOLD}╔══════════════════════════════════════════════════════════════╗${NC}"
