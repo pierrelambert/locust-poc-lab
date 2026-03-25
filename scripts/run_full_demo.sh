@@ -69,7 +69,7 @@ trap cleanup EXIT
 # ── Helpers ────────────────────────────────────────────────────────────────
 stack_running() {
     local compose_file="$1" project="$2"
-    docker compose -f "${compose_file}" -p "${project}" ps --status running 2>/dev/null | grep -q .
+    docker compose -f "${compose_file}" -p "${project}" ps --status running --format '{{.Name}}' 2>/dev/null | grep -q .
 }
 
 wait_for_healthy_redis() {
