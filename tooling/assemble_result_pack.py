@@ -41,8 +41,12 @@ def _find_repo_root() -> Path:
 # ── Discovery helpers ───────────────────────────────────────────────────────
 
 def find_run_summaries(demo_dir: Path) -> List[Path]:
-    """Find all run_summary.json files in subdirectories."""
-    return sorted(demo_dir.rglob("run_summary.json"))
+    """Find all run_summary.json files in subdirectories, or *_summary.json in demo dir."""
+    summaries = sorted(demo_dir.rglob("run_summary.json"))
+    if not summaries:
+        # Orchestrator copies summaries as flat *_summary.json files into demo dir
+        summaries = sorted(demo_dir.glob("*_summary.json"))
+    return summaries
 
 
 def find_file(demo_dir: Path, name: str) -> Optional[Path]:
@@ -59,8 +63,12 @@ def find_comparison_report(demo_dir: Path) -> Tuple[Optional[Path], Optional[Pat
 
 
 def find_rto_rpo_report(demo_dir: Path) -> Tuple[Optional[Path], Optional[Path]]:
-    """Find rto_rpo.json and any rto_rpo markdown."""
+    """Find rto_rpo.json (or rto_rpo_*.json) and any rto_rpo markdown."""
     js = find_file(demo_dir, "rto_rpo.json")
+    if js is None:
+        # Orchestrator saves as rto_rpo_re.json / rto_rpo_oss.json
+        candidates = sorted(demo_dir.glob("rto_rpo_*.json"))
+        js = candidates[0] if candidates else None
     md = find_file(demo_dir, "rto_rpo_report.md") or find_file(demo_dir, "rto_rpo.md")
     return md, js
 
@@ -578,10 +586,15 @@ def assemble_result_pack(demo_dir_path: str) -> Path:
         data = load_json(sp)
         if data:
             summaries_data.append(data)
-            # Copy to run_summaries/ with parent dir name prefix
-            dest_name = f"{sp.parent.name}_run_summary.json"
+            # Copy to run_summaries/
+            if sp.name == "run_summary.json":
+                # From subdirectory — prefix with parent dir name
+                dest_name = f"{sp.parent.name}_run_summary.json"
+            else:
+                # Flat *_summary.json from orchestrator — keep original name
+                dest_name = sp.name
             shutil.copy2(sp, summaries_dir / dest_name)
-            print(f"  [OK] Run summary: {sp.parent.name}")
+            print(f"  [OK] Run summary: {sp.name}")
 
     if not summaries_data:
         print("  [WARN] No run_summary.json files found")

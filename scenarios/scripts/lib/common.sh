@@ -82,7 +82,20 @@ wait_for_redis() {
 LOCUST_PID=""
 start_locust() {
     local csv_prefix="${RUN_DIR}/locust" run_time="${1:-}"
-    local cmd=(locust -f "${LOCUST_FILE}" --headless --host "${LOCUST_HOST}"
+    local locust_bin
+    if command -v locust &>/dev/null; then
+        locust_bin="locust"
+    else
+        local repo_root
+        repo_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$0")/../..")"
+        if [[ -x "${repo_root}/.venv/bin/locust" ]]; then
+            locust_bin="${repo_root}/.venv/bin/locust"
+        else
+            log_error "locust not found — install with: pip install locust"
+            return 1
+        fi
+    fi
+    local cmd=("${locust_bin}" -f "${LOCUST_FILE}" --headless --host "${LOCUST_HOST}"
         -u "${LOCUST_USERS}" -r "${LOCUST_SPAWN_RATE}"
         --csv "${csv_prefix}" --csv-full-history)
     [[ -n "${WORKLOAD_PROFILE}" ]] && cmd+=(--config "${WORKLOAD_PROFILE}")
@@ -128,8 +141,12 @@ start_canary() {
         --connection-mode "${CANARY_MODE:-standalone}")
     [[ -n "${CANARY_PASSWORD:-}" ]] && canary_args+=(--password "${CANARY_PASSWORD}")
     [[ "${CANARY_SSL:-false}" == "true" ]] && canary_args+=(--ssl)
+    local python_bin="python3"
+    if [[ -x "${repo_root}/.venv/bin/python3" ]]; then
+        python_bin="${repo_root}/.venv/bin/python3"
+    fi
     log_info "Starting canary writer (rate=${CANARY_RATE} Hz)"
-    PYTHONPATH="${repo_root}" python3 "${canary_script}" "${canary_args[@]}" \
+    PYTHONPATH="${repo_root}" "${python_bin}" "${canary_script}" "${canary_args[@]}" \
         > "${RUN_DIR}/canary_stdout.log" 2>&1 &
     CANARY_PID=$!
     log_ok "Canary writer started (PID: ${CANARY_PID})"
@@ -149,13 +166,17 @@ stop_canary() {
     repo_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$0")/../..")"
     local canary_log="${RUN_DIR}/canary_writes.jsonl"
     if [[ -f "${canary_log}" ]]; then
+        local python_bin="python3"
+        if [[ -x "${repo_root}/.venv/bin/python3" ]]; then
+            python_bin="${repo_root}/.venv/bin/python3"
+        fi
         log_info "Running consistency checker..."
-        PYTHONPATH="${repo_root}" python3 -m tooling.consistency_checker \
+        PYTHONPATH="${repo_root}" "${python_bin}" -m tooling.consistency_checker \
             --host "${CANARY_HOST:-localhost}" --port "${CANARY_PORT:-6379}" \
             --connection-mode "${CANARY_MODE:-standalone}" \
             --canary-log "${canary_log}" 2>&1 || log_warn "Consistency checker failed"
         log_info "Running RTO/RPO reporter..."
-        PYTHONPATH="${repo_root}" python3 -m tooling.rto_rpo_report "${RUN_DIR}" 2>&1 \
+        PYTHONPATH="${repo_root}" "${python_bin}" -m tooling.rto_rpo_report "${RUN_DIR}" 2>&1 \
             || log_warn "RTO/RPO reporter failed"
     fi
 }
@@ -432,9 +453,13 @@ export_evidence() {
     local repo_root
     repo_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$0")/../..")"
     local exporter="${repo_root}/observability/exporters/run_summary_exporter.py"
+    local python_bin="python3"
+    if [[ -x "${repo_root}/.venv/bin/python3" ]]; then
+        python_bin="${repo_root}/.venv/bin/python3"
+    fi
     if [[ -f "${exporter}" ]]; then
         log_info "Running evidence exporter..."
-        python3 "${exporter}" "${RUN_DIR}" || log_warn "Evidence exporter failed — falling back to basic summary"
+        "${python_bin}" "${exporter}" "${RUN_DIR}" || log_warn "Evidence exporter failed — falling back to basic summary"
     else
         log_warn "Evidence exporter not found at ${exporter} — writing basic summary"
         local summary="${RUN_DIR}/run_summary.json"
@@ -444,7 +469,7 @@ export_evidence() {
   "platform": "${PLATFORM}",
   "completed_at": "$(ts_now)",
   "results_dir": "${RUN_DIR}",
-  "files": $(ls -1 "${RUN_DIR}" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read().strip().split('\n')))" 2>/dev/null || echo '[]')
+  "files": $(ls -1 "${RUN_DIR}" | "${python_bin}" -c "import sys,json; print(json.dumps(sys.stdin.read().strip().split('\n')))" 2>/dev/null || echo '[]')
 }
 SUMEOF
     fi
