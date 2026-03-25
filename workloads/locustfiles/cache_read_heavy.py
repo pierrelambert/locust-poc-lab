@@ -126,8 +126,8 @@ def on_test_stop(environment, **_kwargs):
 class CacheReadHeavyUser(User):
     """Simulates a product-catalog cache consumer."""
 
-    # Think time driven by profile (5–20 ms default)
-    wait_time = between(0.005, 0.020)
+    # Default think time — overridden in on_start from profile values
+    wait_time = between(0.001, 0.005)
 
     def on_start(self):
         profile = load_profile(PROFILE_PATH)
@@ -136,6 +136,11 @@ class CacheReadHeavyUser(User):
         self.key_cfg = wl["key_config"]
         self.data_cfg = wl["data_config"]
         self.traffic_cfg = wl["traffic_config"]
+
+        # Use think time from profile (milliseconds → seconds)
+        think_min = self.traffic_cfg.get("think_time_min_ms", 1) / 1000.0
+        think_max = self.traffic_cfg.get("think_time_max_ms", 5) / 1000.0
+        self.wait_time = between(think_min, think_max)
 
         self.rng = random.Random()
         self.key_space = self.key_cfg["key_space_size"]
