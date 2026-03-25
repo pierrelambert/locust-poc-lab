@@ -210,6 +210,22 @@ for node in nodes:
 raise SystemExit(1)' "$addr"
 }
 
+wait_for_node_present() {
+    local addr="$1" timeout="${2:-60}" elapsed=0
+    info "Waiting for ${addr} to appear in cluster membership..."
+    while true; do
+        if node_present "$addr"; then
+            ok "Node ${addr} is present in the cluster"
+            return 0
+        fi
+        sleep "${RETRY_INTERVAL}"
+        elapsed=$((elapsed + RETRY_INTERVAL))
+        if [[ $elapsed -ge $timeout ]]; then
+            return 1
+        fi
+    done
+}
+
 active_node_count() {
     local nodes
     nodes="$(nodes_json)"
@@ -256,7 +272,7 @@ bootstrap_cluster_if_needed() {
 }
 
 join_node_if_needed() {
-    local container="$1" addr="$2" response http_code body payload elapsed=0
+    local container="$1" addr="$2" response http_code body payload elapsed=0 verify_timeout=60
     if node_present "$addr"; then
         info "${container} (${addr}) already part of cluster — skipping join"
         return 0
@@ -270,11 +286,18 @@ join_node_if_needed() {
         body="$(body_from_response "$response")"
         if [[ "$http_code" =~ ^2[0-9][0-9]$ ]]; then
             ok "join_cluster accepted for ${container} (${http_code})"
-            return 0
-        fi
-        if printf '%s' "$body" | grep -Eqi 'already|member|join.*progress'; then
-            info "${container} reports join already in progress/existing — continuing"
-            return 0
+            if wait_for_node_present "$addr" "$verify_timeout"; then
+                return 0
+            fi
+            warn "${container} (${addr}) did not appear in cluster after ${verify_timeout}s; retrying join"
+            elapsed=$((elapsed + verify_timeout))
+        elif printf '%s' "$body" | grep -Eqi 'already|member|join.*progress'; then
+            info "${container} reports join already in progress/existing — verifying membership"
+            if wait_for_node_present "$addr" "$verify_timeout"; then
+                return 0
+            fi
+            warn "${container} (${addr}) still missing from cluster after ${verify_timeout}s; retrying join"
+            elapsed=$((elapsed + verify_timeout))
         fi
         sleep 5
         elapsed=$((elapsed + 5))
@@ -473,9 +496,21 @@ main() {
 
     wait_for_bootstrap_api "$NODE1_CONTAINER" 180
     bootstrap_cluster_if_needed
+
+    info "Waiting for cluster to stabilize after creation..."
+    sleep 10
+    wait_for_active_nodes 1 120
+
     join_node_if_needed "$NODE2_CONTAINER" "$NODE2_ADDR"
+    info "Waiting for node2 to join..."
+    sleep 10
+    wait_for_active_nodes 2 180
+
     join_node_if_needed "$NODE3_CONTAINER" "$NODE3_ADDR"
+    info "Waiting for node3 to join..."
+    sleep 10
     wait_for_active_nodes 3 240
+
     create_database_if_needed
     ensure_database_proxy_policy
     wait_for_database_active 180
