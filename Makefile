@@ -1,4 +1,4 @@
-.PHONY: help setup lint clean export-summary test-smoke
+.PHONY: help setup lint clean export-summary test-smoke demo
 .PHONY: re-up re-down re-status
 .PHONY: k8s-scenario-baseline k8s-scenario-primary-kill
 .PHONY: oss-sentinel-up oss-sentinel-down oss-sentinel-status
@@ -220,3 +220,7 @@ validate: ## Validate all project artifacts (Compose, Python, Bash, YAML, Makefi
 
 cleanup-all: ## Tear down all Docker stacks, k8s resources, and clean results
 	@bash infra/scripts/cleanup_all.sh
+
+# ── Full Demo ────────────────────────────────────────────────────────
+demo: ## Run full end-to-end demo (baseline + primary kill on RE & OSS, compare, RTO/RPO)
+	@bash scripts/run_full_demo.sh
