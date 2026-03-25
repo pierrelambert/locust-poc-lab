@@ -30,6 +30,8 @@ export POST_RECOVERY_DURATION="${POST_RECOVERY_DURATION:-60}"
 export LOCUST_USERS="${LOCUST_USERS:-10}"
 export LOCUST_SPAWN_RATE="${LOCUST_SPAWN_RATE:-2}"
 export LOCUST_FILE="${LOCUST_FILE:-workloads/locustfiles/cache_read_heavy.py}"
+SKIP_RE="${SKIP_RE:-false}"
+SKIP_OSS="${SKIP_OSS:-false}"
 
 DEMO_TS="$(date '+%Y%m%d_%H%M%S')"
 DEMO_DIR="${REPO_ROOT}/results/demo_${DEMO_TS}"
