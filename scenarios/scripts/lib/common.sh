@@ -252,18 +252,31 @@ RE_API_PASS="${RE_API_PASS:-redis123}"
 
 # Run rladmin inside the RE cluster container
 _re_rladmin() {
-    docker exec "${RE_CLUSTER_CONTAINER}" rladmin "$@" 2>/dev/null
+    local nodes=("${RE_CLUSTER_CONTAINER}" "re-node2" "re-node3")
+    local node
+    for node in "${nodes[@]}"; do
+        docker exec "${node}" rladmin "$@" 2>/dev/null && return 0
+    done
+    return 1
 }
 
 # Call the RE REST API (GET by default)
 _re_api() {
     local method="${1:-GET}" endpoint="$2"
     shift 2
-    docker exec "${RE_CLUSTER_CONTAINER}" \
-        curl -sk -u "${RE_API_USER}:${RE_API_PASS}" \
-        -X "${method}" \
-        -H "Content-Type: application/json" \
-        "https://localhost:${RE_API_PORT}${endpoint}" "$@" 2>/dev/null
+    local nodes=("${RE_CLUSTER_CONTAINER}" "re-node2" "re-node3")
+    local node result
+    for node in "${nodes[@]}"; do
+        result=$(docker exec "${node}" \
+            curl -sk -u "${RE_API_USER}:${RE_API_PASS}" \
+            -X "${method}" \
+            -H "Content-Type: application/json" \
+            "https://localhost:${RE_API_PORT}${endpoint}" "$@" 2>/dev/null) && {
+            echo "${result}"
+            return 0
+        }
+    done
+    return 1
 }
 
 # Get the RE database UID by name
