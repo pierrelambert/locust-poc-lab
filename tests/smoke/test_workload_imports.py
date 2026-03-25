@@ -47,3 +47,32 @@ def test_lib_modules_import():
         mod = importlib.import_module(mod_name)
         assert mod is not None
 
+
+def test_cache_read_heavy_instance_wait_time_callable(monkeypatch):
+    """cache_read_heavy should install an instance wait_time callable."""
+    mod = importlib.import_module("workloads.locustfiles.cache_read_heavy")
+
+    monkeypatch.setattr(
+        mod,
+        "load_profile",
+        lambda _path: {
+            "workload": {
+                "connection": {},
+                "key_config": {"key_space_size": 10},
+                "data_config": {},
+                "traffic_config": {
+                    "read_ratio": 90,
+                    "think_time_min_ms": 10,
+                    "think_time_max_ms": 20,
+                },
+            }
+        },
+    )
+    monkeypatch.setattr(mod, "get_redis_client", lambda _cfg: object())
+
+    user = mod.CacheReadHeavyUser.__new__(mod.CacheReadHeavyUser)
+    user.on_start()
+
+    wait_seconds = user.wait_time()
+    assert 0.01 <= wait_seconds <= 0.02
+

@@ -34,7 +34,7 @@ docker system df
 
 | Port | Service |
 |---|---|
-| 6379 | Redis primary (OSS Sentinel) |
+| 6380 | Redis primary (OSS Sentinel) |
 | 7001–7006 | Redis Cluster nodes |
 | 9443 | Redis Enterprise Admin UI |
 | 12000 | Redis Enterprise database |

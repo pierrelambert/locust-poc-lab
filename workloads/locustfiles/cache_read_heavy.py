@@ -140,7 +140,7 @@ class CacheReadHeavyUser(User):
         # Use think time from profile (milliseconds → seconds)
         think_min = self.traffic_cfg.get("think_time_min_ms", 1) / 1000.0
         think_max = self.traffic_cfg.get("think_time_max_ms", 5) / 1000.0
-        self.wait_time = between(think_min, think_max)
+        self.wait_time = lambda: random.uniform(think_min, think_max)
 
         self.rng = random.Random()
         self.key_space = self.key_cfg["key_space_size"]

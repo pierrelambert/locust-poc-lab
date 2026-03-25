@@ -47,7 +47,7 @@ main() {
     # Step 2: Verify dataset is primed
     log_step 2 "Verify dataset is primed"
     local key_count
-    key_count=$(docker exec "${PRIMARY_CONTAINER}" redis-cli DBSIZE 2>/dev/null | grep -o '[0-9]*' || echo "0")
+    key_count=$(docker exec "${PRIMARY_CONTAINER}" redis-cli -p ${REDIS_CLI_PORT} DBSIZE 2>/dev/null | grep -o '[0-9]*' || echo "0")
     log_info "Current key count: ${key_count}"
     if [[ "${key_count}" -eq 0 ]]; then
         log_warn "Database is empty — ensure dataset is primed before running scenario"
@@ -140,7 +140,7 @@ main() {
                 fi
                 ;;
             oss-cluster)
-                if docker exec "${REPLICA_CONTAINER:-redis-node2}" redis-cli CLUSTER INFO 2>/dev/null | grep -q "cluster_state:ok"; then
+                if docker exec "${REPLICA_CONTAINER:-redis-node2}" redis-cli -p ${REDIS_CLI_PORT} CLUSTER INFO 2>/dev/null | grep -q "cluster_state:ok"; then
                     new_primary_found=true
                     mark_event "failover_detected" "elapsed=${recovery_elapsed}s"
                     break
