@@ -655,6 +655,8 @@ def _build_html_report(summaries: List[Dict[str, Any]], demo_dir: Path, summary_
     oss_base_p99 = _as_float(_get(oss_base, "latency_percentiles_ms", "p99"))
     re_fail_p99 = _as_float(_get(re_fail, "latency_percentiles_ms", "p99"))
     oss_fail_p99 = _as_float(_get(oss_fail, "latency_percentiles_ms", "p99"))
+    re_base_errors = _get(re_base, "errors", "total_failures", default=NA)
+    oss_base_errors = _get(oss_base, "errors", "total_failures", default=NA)
     re_fail_errors = _get(re_fail, "errors", "total_failures", default=NA)
     oss_fail_errors = _get(oss_fail, "errors", "total_failures", default=NA)
     re_fail_error_rate = _as_float(_get(re_fail, "errors", "error_rate"))
@@ -747,6 +749,47 @@ def _build_html_report(summaries: List[Dict[str, Any]], demo_dir: Path, summary_
             ]
         )
         for label, value, copy in top_cards
+    )
+
+    re_fail_loss_text = "0%" if re_fail_error_rate == 0 else (_fmt_pct(re_fail_error_rate) if re_fail_error_rate is not None else NA)
+    slide_summary_title = "Redis Enterprise vs OSS Redis — POC Results"
+    slide_summary_text = "\n".join(
+        [
+            slide_summary_title,
+            "",
+            "Baseline Performance",
+            f"• Redis Enterprise: {_fmt_count(re_base_rps)} req/s | p99 {_fmt_num(re_base_p99, ' ms', precision=0)} | {_fmt_count(re_base_errors)} errors",
+            f"• OSS Redis: {_fmt_count(oss_base_rps)} req/s | p99 {_fmt_num(oss_base_p99, ' ms', precision=0)} | {_fmt_count(oss_base_errors)} errors",
+            "",
+            "Primary Kill (Failover)",
+            f"• Redis Enterprise: {_fmt_count(re_fail_rps)} req/s | p99 {_fmt_num(re_fail_p99, ' ms', precision=0)} | {_fmt_count(re_fail_errors)} errors ({_fmt_pct(re_fail_error_rate) if re_fail_error_rate is not None else NA})",
+            f"• OSS Redis: {_fmt_count(oss_fail_rps)} req/s | p99 {_fmt_num(oss_fail_p99, ' ms', precision=0)} | {_fmt_count(oss_fail_errors)} errors ({_fmt_pct(oss_fail_error_rate) if oss_fail_error_rate is not None else NA})",
+            "",
+            "Key Takeaways",
+            f"• RE maintained {_fmt_pct(re_retention, precision=1)} throughput during failover vs {_fmt_pct(oss_retention, precision=1)} for OSS",
+            f"• RE delivered {f'{failover_throughput_advantage:.2f}x' if failover_throughput_advantage is not None else NA} more throughput under fault",
+            f"• RE had {f'{failover_latency_advantage:.2f}x' if failover_latency_advantage is not None else NA} lower p99 latency during failure",
+            f"• OSS lost {_fmt_pct(oss_fail_error_rate) if oss_fail_error_rate is not None else NA} of requests; RE lost {re_fail_loss_text}",
+        ]
+    )
+    slide_summary_html = "\n".join(
+        [
+            f'<strong class="slide-summary-title">{html.escape(slide_summary_title)}</strong>',
+            "",
+            '<strong class="slide-summary-section">Baseline Performance</strong>',
+            html.escape(f"• Redis Enterprise: {_fmt_count(re_base_rps)} req/s | p99 {_fmt_num(re_base_p99, ' ms', precision=0)} | {_fmt_count(re_base_errors)} errors"),
+            html.escape(f"• OSS Redis: {_fmt_count(oss_base_rps)} req/s | p99 {_fmt_num(oss_base_p99, ' ms', precision=0)} | {_fmt_count(oss_base_errors)} errors"),
+            "",
+            '<strong class="slide-summary-section">Primary Kill (Failover)</strong>',
+            html.escape(f"• Redis Enterprise: {_fmt_count(re_fail_rps)} req/s | p99 {_fmt_num(re_fail_p99, ' ms', precision=0)} | {_fmt_count(re_fail_errors)} errors ({_fmt_pct(re_fail_error_rate) if re_fail_error_rate is not None else NA})"),
+            html.escape(f"• OSS Redis: {_fmt_count(oss_fail_rps)} req/s | p99 {_fmt_num(oss_fail_p99, ' ms', precision=0)} | {_fmt_count(oss_fail_errors)} errors ({_fmt_pct(oss_fail_error_rate) if oss_fail_error_rate is not None else NA})"),
+            "",
+            '<strong class="slide-summary-section">Key Takeaways</strong>',
+            html.escape(f"• RE maintained {_fmt_pct(re_retention, precision=1)} throughput during failover vs {_fmt_pct(oss_retention, precision=1)} for OSS"),
+            html.escape(f"• RE delivered {f'{failover_throughput_advantage:.2f}x' if failover_throughput_advantage is not None else NA} more throughput under fault"),
+            html.escape(f"• RE had {f'{failover_latency_advantage:.2f}x' if failover_latency_advantage is not None else NA} lower p99 latency during failure"),
+            html.escape(f"• OSS lost {_fmt_pct(oss_fail_error_rate) if oss_fail_error_rate is not None else NA} of requests; RE lost {re_fail_loss_text}"),
+        ]
     )
 
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -851,6 +894,44 @@ def _build_html_report(summaries: List[Dict[str, Any]], demo_dir: Path, summary_
     .hero-panel {{ display: flex; flex-direction: column; justify-content: space-between; background: var(--redis-red-tint); }}
     .hero-stat {{ margin: 16px 0; font-family: 'Space Mono'; font-size: 48px; line-height: 1; }}
     .hero-note {{ color: var(--ink-secondary); }}
+    .slide-summary-card {{
+      position: relative;
+      margin-bottom: 24px;
+      background: var(--redis-red-tint);
+    }}
+    .slide-summary-content {{ padding-right: 120px; }}
+    .slide-summary-text {{
+      color: var(--ink);
+      font-family: 'Space Grotesk';
+      font-size: 16px;
+      line-height: 1.75;
+      white-space: pre-line;
+    }}
+    .slide-summary-title,
+    .slide-summary-section {{
+      display: block;
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1.3;
+    }}
+    .slide-summary-section {{ margin-top: 24px; }}
+    .copy-btn {{
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      border: none;
+      border-radius: 5px;
+      background: var(--redis-red);
+      color: #FFFFFF;
+      cursor: pointer;
+      font-family: 'Space Grotesk';
+      font-size: 14px;
+      font-weight: 700;
+      padding: 8px 16px;
+      transition: all 0.2s ease-in-out;
+    }}
+    .copy-btn:hover {{ background: var(--redis-red-hover); }}
+    .copy-btn:focus-visible {{ outline: 2px solid var(--ink); outline-offset: 2px; }}
     .metrics-grid {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; margin: 24px 0 48px; }}
     .metric-value {{ margin-bottom: 16px; font-family: 'Space Mono'; font-size: 32px; line-height: 1.05; }}
     .metric-copy {{ color: var(--ink-secondary); }}
@@ -905,8 +986,21 @@ def _build_html_report(summaries: List[Dict[str, Any]], demo_dir: Path, summary_
     }}
     @media (max-width: 640px) {{
       .page {{ padding: 24px 16px 40px; }}
+      .slide-summary-content {{ padding-right: 0; padding-top: 56px; }}
+      .copy-btn {{ top: 16px; right: 16px; }}
       .metrics-grid {{ grid-template-columns: 1fr; }}
       .hero-stat, .big-metric .value, .metric-value {{ font-size: 32px; }}
+    }}
+    @media print {{
+      body {{ background: #FFFFFF; }}
+      .copy-btn {{ display: none !important; }}
+      .slide-summary-card {{
+        break-inside: avoid;
+        box-shadow: none;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }}
+      .slide-summary-content {{ padding-right: 0; }}
     }}
   </style>
 </head>
@@ -946,6 +1040,14 @@ def _build_html_report(summaries: List[Dict[str, Any]], demo_dir: Path, summary_
           <span class="chip">OSS retained {html.escape(_fmt_pct(oss_retention, precision=1))}</span>
         </div>
       </aside>
+    </section>
+
+    <section class="card slide-summary-card">
+      <button class="copy-btn" type="button" onclick="copySlideSummary(this)">Copy</button>
+      <div class="slide-summary-content">
+        <p class="eyebrow">SLIDE-READY SUMMARY</p>
+        <div class="slide-summary-text">{slide_summary_html}</div>
+      </div>
     </section>
 
     <section class="metrics-grid">
@@ -1040,6 +1142,18 @@ def _build_html_report(summaries: List[Dict[str, Any]], demo_dir: Path, summary_
 
     <p class="footer">Source demo directory: {html.escape(str(demo_dir))}. This report is assembled from the exported run summaries so the displayed req/s, p99, error counts, and versions stay aligned with the raw benchmark evidence.</p>
   </main>
+  <script>
+    const slideSummaryText = {json.dumps(slide_summary_text)};
+    function copySlideSummary(button) {{
+      navigator.clipboard.writeText(slideSummaryText).then(() => {{
+        const defaultText = 'Copy';
+        button.textContent = 'Copied ✓';
+        window.setTimeout(() => {{
+          button.textContent = defaultText;
+        }}, 2000);
+      }});
+    }}
+  </script>
 </body>
 </html>
 """
