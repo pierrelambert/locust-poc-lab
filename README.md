@@ -64,6 +64,19 @@ For Kubernetes paths, you also need `k3d` and `kubectl`.
 
 ---
 
+## Sample Report Output
+
+After running `make demo`, the lab generates a polished, Redis-branded HTML results report. Open the [sample report](examples/results/sample_results_report.html) in your browser to preview.
+
+The report includes:
+- **Executive headline** — auto-generated narrative from real benchmark data
+- **Comparison table** — Redis Enterprise vs OSS Redis with explicit improvement metrics
+- **Failover deep-dive** — side-by-side cards showing throughput, latency, and error rates during primary node failure
+- **Light/dark slide mode** — toggle for white or dark slide backgrounds
+- **One-click copy** — tab-separated table format for pasting into slides or spreadsheets
+
+---
+
 ## Directory Layout
 
 | Directory | Purpose |
@@ -71,6 +84,7 @@ For Kubernetes paths, you also need `k3d` and `kubectl`.
 | `docs/` | Principles, blueprint, guides |
 | `docs/templates/` | Charter and scorecard templates |
 | `docs/guides/` | SA-facing guided labs and runbooks |
+| `examples/` | Sample outputs: run summaries, scorecards, HTML report |
 | `infra/docker/` | Docker Compose stacks (RE cluster, OSS Sentinel, OSS Cluster) |
 | `infra/k8s/` | Kubernetes manifests (RE Operator, OSS on k8s) |
 | `infra/scripts/` | Shared setup/teardown helpers |
