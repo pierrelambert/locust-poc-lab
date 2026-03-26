@@ -663,10 +663,12 @@ def _build_html_report(summaries: List[Dict[str, Any]], demo_dir: Path, summary_
     oss_fail_error_rate = _as_float(_get(oss_fail, "errors", "error_rate"))
 
     baseline_headroom = _safe_ratio(re_base_rps, oss_base_rps)
+    baseline_latency_advantage = _safe_ratio(oss_base_p99, re_base_p99)
     failover_throughput_advantage = _safe_ratio(re_fail_rps, oss_fail_rps)
     failover_latency_advantage = _safe_ratio(oss_fail_p99, re_fail_p99)
     re_retention = _safe_ratio(re_fail_rps, re_base_rps)
     oss_retention = _safe_ratio(oss_fail_rps, oss_base_rps)
+    retention_advantage = _safe_ratio(re_retention, oss_retention)
     error_gap = None
     if re_fail_error_rate is not None and oss_fail_error_rate is not None:
         error_gap = oss_fail_error_rate - re_fail_error_rate
@@ -751,45 +753,104 @@ def _build_html_report(summaries: List[Dict[str, Any]], demo_dir: Path, summary_
         for label, value, copy in top_cards
     )
 
-    re_fail_loss_text = "0%" if re_fail_error_rate == 0 else (_fmt_pct(re_fail_error_rate) if re_fail_error_rate is not None else NA)
     slide_summary_title = "Redis Enterprise vs OSS Redis — POC Results"
+    baseline_throughput_delta = (
+        f"{((baseline_headroom - 1) * 100):+.1f}%" if baseline_headroom is not None else NA
+    )
+    failover_error_improvement = NA
+    if (
+        re_fail_error_rate is not None
+        and oss_fail_error_rate is not None
+        and re_fail_error_rate <= 0
+        and oss_fail_error_rate > 0
+    ):
+        failover_error_improvement = "Zero errors"
+    elif (
+        re_fail_error_rate is not None
+        and oss_fail_error_rate is not None
+        and re_fail_error_rate > 0
+        and oss_fail_error_rate > re_fail_error_rate
+    ):
+        failover_error_improvement = f"{(oss_fail_error_rate / re_fail_error_rate):.2f}x lower"
+
+    slide_summary_rows = [
+        (
+            "Baseline throughput",
+            f"{_fmt_count(re_base_rps)} req/s",
+            f"{_fmt_count(oss_base_rps)} req/s",
+            baseline_throughput_delta,
+            True,
+            False,
+        ),
+        (
+            "Baseline p99 latency",
+            _fmt_num(re_base_p99, " ms", precision=0),
+            _fmt_num(oss_base_p99, " ms", precision=0),
+            f"{baseline_latency_advantage:.2f}x lower" if baseline_latency_advantage is not None else NA,
+            True,
+            False,
+        ),
+        (
+            "Failover throughput",
+            f"{_fmt_count(re_fail_rps)} req/s",
+            f"{_fmt_count(oss_fail_rps)} req/s",
+            f"{failover_throughput_advantage:.2f}x higher" if failover_throughput_advantage is not None else NA,
+            True,
+            False,
+        ),
+        (
+            "Failover p99 latency",
+            _fmt_num(re_fail_p99, " ms", precision=0),
+            _fmt_num(oss_fail_p99, " ms", precision=0),
+            f"{failover_latency_advantage:.2f}x lower" if failover_latency_advantage is not None else NA,
+            True,
+            False,
+        ),
+        (
+            "Failover error rate",
+            _fmt_pct(re_fail_error_rate),
+            _fmt_pct(oss_fail_error_rate),
+            failover_error_improvement,
+            True,
+            True,
+        ),
+        (
+            "Failover errors",
+            _fmt_count(re_fail_errors),
+            _fmt_count(oss_fail_errors),
+            "—",
+            False,
+            False,
+        ),
+        (
+            "Throughput retained",
+            _fmt_pct(re_retention, precision=1),
+            _fmt_pct(oss_retention, precision=1),
+            f"{retention_advantage:.1f}x better" if retention_advantage is not None else NA,
+            True,
+            False,
+        ),
+    ]
     slide_summary_text = "\n".join(
         [
             slide_summary_title,
             "",
-            "Baseline Performance",
-            f"• Redis Enterprise: {_fmt_count(re_base_rps)} req/s | p99 {_fmt_num(re_base_p99, ' ms', precision=0)} | {_fmt_count(re_base_errors)} errors",
-            f"• OSS Redis: {_fmt_count(oss_base_rps)} req/s | p99 {_fmt_num(oss_base_p99, ' ms', precision=0)} | {_fmt_count(oss_base_errors)} errors",
-            "",
-            "Primary Kill (Failover)",
-            f"• Redis Enterprise: {_fmt_count(re_fail_rps)} req/s | p99 {_fmt_num(re_fail_p99, ' ms', precision=0)} | {_fmt_count(re_fail_errors)} errors ({_fmt_pct(re_fail_error_rate) if re_fail_error_rate is not None else NA})",
-            f"• OSS Redis: {_fmt_count(oss_fail_rps)} req/s | p99 {_fmt_num(oss_fail_p99, ' ms', precision=0)} | {_fmt_count(oss_fail_errors)} errors ({_fmt_pct(oss_fail_error_rate) if oss_fail_error_rate is not None else NA})",
-            "",
-            "Key Takeaways",
-            f"• RE maintained {_fmt_pct(re_retention, precision=1)} throughput during failover vs {_fmt_pct(oss_retention, precision=1)} for OSS",
-            f"• RE delivered {f'{failover_throughput_advantage:.2f}x' if failover_throughput_advantage is not None else NA} more throughput under fault",
-            f"• RE had {f'{failover_latency_advantage:.2f}x' if failover_latency_advantage is not None else NA} lower p99 latency during failure",
-            f"• OSS lost {_fmt_pct(oss_fail_error_rate) if oss_fail_error_rate is not None else NA} of requests; RE lost {re_fail_loss_text}",
+            "\t".join(["Metric", "Redis Enterprise", "OSS Redis", "Improvement"]),
+            *["\t".join([metric, re_value, oss_value, delta]) for metric, re_value, oss_value, delta, _, _ in slide_summary_rows],
         ]
     )
-    slide_summary_html = "\n".join(
-        [
-            f'<strong class="slide-summary-title">{html.escape(slide_summary_title)}</strong>',
-            "",
-            '<strong class="slide-summary-section">Baseline Performance</strong>',
-            html.escape(f"• Redis Enterprise: {_fmt_count(re_base_rps)} req/s | p99 {_fmt_num(re_base_p99, ' ms', precision=0)} | {_fmt_count(re_base_errors)} errors"),
-            html.escape(f"• OSS Redis: {_fmt_count(oss_base_rps)} req/s | p99 {_fmt_num(oss_base_p99, ' ms', precision=0)} | {_fmt_count(oss_base_errors)} errors"),
-            "",
-            '<strong class="slide-summary-section">Primary Kill (Failover)</strong>',
-            html.escape(f"• Redis Enterprise: {_fmt_count(re_fail_rps)} req/s | p99 {_fmt_num(re_fail_p99, ' ms', precision=0)} | {_fmt_count(re_fail_errors)} errors ({_fmt_pct(re_fail_error_rate) if re_fail_error_rate is not None else NA})"),
-            html.escape(f"• OSS Redis: {_fmt_count(oss_fail_rps)} req/s | p99 {_fmt_num(oss_fail_p99, ' ms', precision=0)} | {_fmt_count(oss_fail_errors)} errors ({_fmt_pct(oss_fail_error_rate) if oss_fail_error_rate is not None else NA})"),
-            "",
-            '<strong class="slide-summary-section">Key Takeaways</strong>',
-            html.escape(f"• RE maintained {_fmt_pct(re_retention, precision=1)} throughput during failover vs {_fmt_pct(oss_retention, precision=1)} for OSS"),
-            html.escape(f"• RE delivered {f'{failover_throughput_advantage:.2f}x' if failover_throughput_advantage is not None else NA} more throughput under fault"),
-            html.escape(f"• RE had {f'{failover_latency_advantage:.2f}x' if failover_latency_advantage is not None else NA} lower p99 latency during failure"),
-            html.escape(f"• OSS lost {_fmt_pct(oss_fail_error_rate) if oss_fail_error_rate is not None else NA} of requests; RE lost {re_fail_loss_text}"),
-        ]
+    slide_summary_rows_html = "".join(
+        "".join(
+            [
+                f'<tr class="{"slide-summary-row--money" if is_money_row else ""}">',
+                f'<th scope="row">{html.escape(metric)}</th>',
+                f'<td>{html.escape(re_value)}</td>',
+                f'<td>{html.escape(oss_value)}</td>',
+                f'<td class="slide-summary-delta{" slide-summary-delta--win" if is_win else ""}">{html.escape(delta)}</td>',
+                "</tr>",
+            ]
+        )
+        for metric, re_value, oss_value, delta, is_win, is_money_row in slide_summary_rows
     )
 
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -895,43 +956,115 @@ def _build_html_report(summaries: List[Dict[str, Any]], demo_dir: Path, summary_
     .hero-stat {{ margin: 16px 0; font-family: 'Space Mono'; font-size: 48px; line-height: 1; }}
     .hero-note {{ color: var(--ink-secondary); }}
     .slide-summary-card {{
-      position: relative;
+      --slide-bg: #FFFFFF;
+      --slide-text: #091A23;
+      --slide-secondary: #163341;
+      --slide-muted: #5A6A72;
+      --slide-card: #FFFFFF;
+      --slide-row-odd: #FFFFFF;
+      --slide-row-even: #FFE8E6;
+      --slide-improvement: #0A7C42;
+      --slide-red-hover: #EB352A;
       margin-bottom: 24px;
-      background: var(--redis-red-tint);
+      background: var(--slide-bg);
+      color: var(--slide-text);
     }}
-    .slide-summary-content {{ padding-right: 120px; }}
-    .slide-summary-text {{
-      color: var(--ink);
-      font-family: 'Space Grotesk';
-      font-size: 16px;
-      line-height: 1.75;
-      white-space: pre-line;
+    .slide-summary-card.slide-dark {{
+      --slide-bg: #0A1A23;
+      --slide-text: #F0F4F5;
+      --slide-secondary: #C8D1D5;
+      --slide-muted: #5A6A72;
+      --slide-card: #122A35;
+      --slide-row-odd: #0A1A23;
+      --slide-row-even: #122A35;
+      --slide-improvement: #7DD89B;
+      --slide-red-hover: #FF7566;
     }}
-    .slide-summary-title,
-    .slide-summary-section {{
+    .slide-summary-card .eyebrow {{ margin-bottom: 8px; color: var(--slide-secondary); }}
+    .slide-summary-content {{ display: grid; gap: 24px; }}
+    .slide-summary-head {{
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }}
+    .slide-summary-heading {{ max-width: 720px; }}
+    .slide-summary-title {{
       display: block;
-      font-size: 20px;
+      color: var(--slide-text);
+      font-family: 'Space Grotesk';
+      font-size: 28px;
       font-weight: 700;
-      line-height: 1.3;
+      line-height: 1.2;
     }}
-    .slide-summary-section {{ margin-top: 24px; }}
-    .copy-btn {{
-      position: absolute;
-      top: 24px;
-      right: 24px;
-      border: none;
-      border-radius: 5px;
-      background: var(--redis-red);
-      color: #FFFFFF;
+    .slide-summary-actions {{ display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }}
+    .slide-summary-btn {{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--slide-card);
+      color: var(--slide-text);
       cursor: pointer;
       font-family: 'Space Grotesk';
       font-size: 14px;
       font-weight: 700;
+      line-height: 1;
       padding: 8px 16px;
       transition: all 0.2s ease-in-out;
+      white-space: nowrap;
     }}
-    .copy-btn:hover {{ background: var(--redis-red-hover); }}
-    .copy-btn:focus-visible {{ outline: 2px solid var(--ink); outline-offset: 2px; }}
+    .slide-summary-btn:hover {{ border-color: var(--redis-red); color: var(--redis-red); }}
+    .slide-summary-btn:focus-visible {{ outline: 2px solid var(--slide-text); outline-offset: 2px; }}
+    .slide-summary-copy {{ background: var(--redis-red); border-color: var(--redis-red); color: #FFFFFF; }}
+    .slide-summary-copy:hover {{ background: var(--slide-red-hover); border-color: var(--slide-red-hover); color: #FFFFFF; }}
+    .slide-summary-toggle-divider {{ color: var(--slide-muted); }}
+    .slide-summary-toggle-option {{ opacity: 0.58; transition: all 0.2s ease-in-out; }}
+    .slide-summary-toggle-option--light {{ font-weight: 700; opacity: 1; }}
+    .slide-summary-card.slide-dark .slide-summary-toggle-option--light {{ opacity: 0.58; }}
+    .slide-summary-card.slide-dark .slide-summary-toggle-option--dark {{ font-weight: 700; opacity: 1; }}
+    .slide-summary-table-shell {{
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--slide-card);
+      overflow-x: auto;
+    }}
+    .slide-summary-table {{
+      width: 100%;
+      min-width: 720px;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-family: 'Space Grotesk';
+      font-size: 15px;
+    }}
+    .slide-summary-table thead th {{
+      background: var(--redis-red);
+      color: #FFFFFF;
+      font-weight: 700;
+      padding: 16px 24px;
+      text-align: left;
+      border-bottom: none;
+    }}
+    .slide-summary-table tbody tr:nth-child(odd) {{ background: var(--slide-row-odd); }}
+    .slide-summary-table tbody tr:nth-child(even) {{ background: var(--slide-row-even); }}
+    .slide-summary-table tbody th,
+    .slide-summary-table tbody td {{
+      padding: 16px 24px;
+      color: var(--slide-text);
+      font-size: 15px;
+      line-height: 1.5;
+      text-align: left;
+      border-bottom: none;
+    }}
+    .slide-summary-table tbody tr + tr th,
+    .slide-summary-table tbody tr + tr td {{ border-top: 1px solid rgba(45, 71, 84, 0.24); }}
+    .slide-summary-table tbody th {{ font-weight: 700; width: 28%; }}
+    .slide-summary-table tbody td:nth-child(2),
+    .slide-summary-table tbody td:nth-child(3) {{ white-space: nowrap; }}
+    .slide-summary-delta {{ font-weight: 700; }}
+    .slide-summary-delta--win {{ color: var(--slide-improvement) !important; }}
+    .slide-summary-row--money th {{ border-left: 4px solid var(--redis-red); padding-left: 20px; }}
     .metrics-grid {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; margin: 24px 0 48px; }}
     .metric-value {{ margin-bottom: 16px; font-family: 'Space Mono'; font-size: 32px; line-height: 1.05; }}
     .metric-copy {{ color: var(--ink-secondary); }}
@@ -980,27 +1113,28 @@ def _build_html_report(summaries: List[Dict[str, Any]], demo_dir: Path, summary_
     }}
     @media (max-width: 880px) {{
       .hero, .showcase-grid {{ grid-template-columns: 1fr; }}
+      .slide-summary-head {{ flex-direction: column; }}
+      .slide-summary-actions {{ justify-content: flex-start; }}
       .topbar {{ flex-direction: column; align-items: flex-start; }}
       .topbar-meta {{ justify-content: flex-start; }}
       h1 {{ font-size: 40px; }}
     }}
     @media (max-width: 640px) {{
       .page {{ padding: 24px 16px 40px; }}
-      .slide-summary-content {{ padding-right: 0; padding-top: 56px; }}
-      .copy-btn {{ top: 16px; right: 16px; }}
+      .slide-summary-title {{ font-size: 24px; }}
+      .slide-summary-btn {{ width: 100%; justify-content: center; }}
       .metrics-grid {{ grid-template-columns: 1fr; }}
       .hero-stat, .big-metric .value, .metric-value {{ font-size: 32px; }}
     }}
     @media print {{
       body {{ background: #FFFFFF; }}
-      .copy-btn {{ display: none !important; }}
+      .slide-summary-actions {{ display: none !important; }}
       .slide-summary-card {{
         break-inside: avoid;
         box-shadow: none;
         print-color-adjust: exact;
         -webkit-print-color-adjust: exact;
       }}
-      .slide-summary-content {{ padding-right: 0; }}
     }}
   </style>
 </head>
@@ -1043,10 +1177,36 @@ def _build_html_report(summaries: List[Dict[str, Any]], demo_dir: Path, summary_
     </section>
 
     <section class="card slide-summary-card">
-      <button class="copy-btn" type="button" onclick="copySlideSummary(this)">Copy</button>
       <div class="slide-summary-content">
-        <p class="eyebrow">SLIDE-READY SUMMARY</p>
-        <div class="slide-summary-text">{slide_summary_html}</div>
+        <div class="slide-summary-head">
+          <div class="slide-summary-heading">
+            <p class="eyebrow">SLIDE-READY SUMMARY</p>
+            <strong class="slide-summary-title">{html.escape(slide_summary_title)}</strong>
+          </div>
+          <div class="slide-summary-actions">
+            <button class="slide-summary-btn slide-summary-copy" data-default-text="Copy" type="button" onclick="copySlideSummary(this)">Copy</button>
+            <button class="slide-summary-btn slide-summary-toggle" type="button" aria-pressed="false" onclick="toggleSlideSummaryTheme(this)">
+              <span class="slide-summary-toggle-option slide-summary-toggle-option--light">☀️ Light</span>
+              <span class="slide-summary-toggle-divider">|</span>
+              <span class="slide-summary-toggle-option slide-summary-toggle-option--dark">🌙 Dark</span>
+            </button>
+          </div>
+        </div>
+        <div class="slide-summary-table-shell">
+          <table class="slide-summary-table">
+            <thead>
+              <tr>
+                <th scope="col">Metric</th>
+                <th scope="col">Redis Enterprise</th>
+                <th scope="col">OSS Redis</th>
+                <th scope="col">Δ Improvement</th>
+              </tr>
+            </thead>
+            <tbody>
+              {slide_summary_rows_html}
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -1145,13 +1305,25 @@ def _build_html_report(summaries: List[Dict[str, Any]], demo_dir: Path, summary_
   <script>
     const slideSummaryText = {json.dumps(slide_summary_text)};
     function copySlideSummary(button) {{
+      const defaultText = button.dataset.defaultText || 'Copy';
       navigator.clipboard.writeText(slideSummaryText).then(() => {{
-        const defaultText = 'Copy';
         button.textContent = 'Copied ✓';
         window.setTimeout(() => {{
           button.textContent = defaultText;
         }}, 2000);
+      }}).catch(() => {{
+        button.textContent = 'Copy failed';
+        window.setTimeout(() => {{
+          button.textContent = defaultText;
+        }}, 2000);
       }});
+    }}
+    function toggleSlideSummaryTheme(button) {{
+      const card = button.closest('.slide-summary-card');
+      const isDark = card.classList.toggle('slide-dark');
+      button.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+      button.setAttribute('title', isDark ? 'Switch slide summary to light mode' : 'Switch slide summary to dark mode');
+      button.setAttribute('aria-label', isDark ? 'Switch slide summary to light mode' : 'Switch slide summary to dark mode');
     }}
   </script>
 </body>
