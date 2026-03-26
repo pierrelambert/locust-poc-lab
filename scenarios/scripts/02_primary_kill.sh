@@ -87,15 +87,33 @@ main() {
     sleep 10
 
     # Step 5: Inject disruption — kill the primary container
-    log_step 5 "Inject disruption: docker kill ${PRIMARY_CONTAINER}"
-    capture_redis_info "${PRIMARY_CONTAINER}" "pre_kill"
+    local kill_container="${PRIMARY_CONTAINER}"
+    local re_pre_master_node=""
+    if [[ "${PLATFORM}" == "re" ]]; then
+        local master_node_uid master_node_suffix
+        master_node_uid=$(re_get_master_node)
+        re_pre_master_node="${master_node_uid}"
+        if [[ -n "${master_node_uid}" ]]; then
+            if [[ "${master_node_uid}" =~ ([0-9]+)$ ]]; then
+                master_node_suffix="${BASH_REMATCH[1]}"
+                kill_container="re-node${master_node_suffix}"
+                log_info "RE master shard is on node ${master_node_uid} (container: ${kill_container})"
+            else
+                log_warn "Could not map RE master node UID '${master_node_uid}' to a container name, falling back to ${PRIMARY_CONTAINER}"
+            fi
+        else
+            log_warn "Could not determine RE master node, falling back to ${PRIMARY_CONTAINER}"
+        fi
+    fi
+    log_step 5 "Inject disruption: docker kill ${kill_container}"
+    capture_redis_info "${kill_container}" "pre_kill"
     capture_topology "pre_kill"
     local kill_epoch
     kill_epoch=$(ts_epoch)
-    mark_event "primary_kill_start" "container=${PRIMARY_CONTAINER}"
-    docker kill "${PRIMARY_CONTAINER}"
-    mark_event "primary_kill_done" "container=${PRIMARY_CONTAINER}"
-    log_ok "Primary container killed: ${PRIMARY_CONTAINER}"
+    mark_event "primary_kill_start" "container=${kill_container}"
+    docker kill "${kill_container}"
+    mark_event "primary_kill_done" "container=${kill_container}"
+    log_ok "Primary container killed: ${kill_container}"
 
     # Step 6: Mark the event in dashboard timeline
     log_step 6 "Mark event in dashboard timeline"
@@ -111,10 +129,8 @@ main() {
     # Poll for a new primary to become available
     local new_primary_found=false
 
-    # For RE, capture the pre-disruption master node for comparison
-    local re_pre_master_node=""
+    # For RE, use the pre-disruption master node for failover comparison
     if [[ "${PLATFORM}" == "re" ]]; then
-        re_pre_master_node=$(re_get_master_node)
         log_info "RE pre-disruption master node: ${re_pre_master_node}"
     fi
 
