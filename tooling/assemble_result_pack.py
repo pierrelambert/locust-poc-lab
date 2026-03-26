@@ -915,7 +915,7 @@ def _build_html_report(summaries: List[Dict[str, Any]], demo_dir: Path, summary_
       transform: rotate(45deg);
       box-shadow: 8px 8px 0 rgba(255, 68, 56, 0.18);
     }}
-    .brand-word {{ font-family: 'Space Mono'; font-size: 24px; font-weight: 700; letter-spacing: 0.08em; }}
+    .brand-word {{ font-family: 'Space Mono'; font-size: 24px; font-weight: 700; letter-spacing: 0.08em; color: var(--redis-red); }}
     .topbar-meta {{ display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px 16px; color: var(--ink-secondary); }}
     .eyebrow {{
       margin: 0 0 16px;
