@@ -171,6 +171,8 @@ if [[ "${SKIP_RE}" != "true" ]]; then
         info "RE cluster already running — skipping startup"
     else
         info "Starting Redis Enterprise cluster..."
+        # Clean volumes to avoid stale state from previous runs.
+        docker compose -f infra/docker/re-cluster/docker-compose.yml -p re-cluster down -v >> "${LOG_FILE}" 2>&1 || true
         make re-up >> "${LOG_FILE}" 2>&1
         STACKS_STARTED="${STACKS_STARTED} re"
         info "Waiting for RE nodes to boot (30s)..."
