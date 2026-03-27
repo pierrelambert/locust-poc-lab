@@ -13,8 +13,8 @@
 #   BASELINE_DURATION       — Baseline run duration in seconds (default: 120)
 #   WARMUP_DURATION         — Warmup duration in seconds (default: 60)
 #   POST_RECOVERY_DURATION  — Post-recovery observation in seconds (default: 60)
-#   LOCUST_USERS            — Number of simulated users (default: 10)
-#   LOCUST_SPAWN_RATE       — User spawn rate (default: 2)
+#   LOCUST_USERS            — Number of simulated users (default: 50)
+#   LOCUST_SPAWN_RATE       — User spawn rate (default: 10)
 #   SKIP_RE                 — Set to "true" to skip RE scenarios
 #   SKIP_OSS                — Set to "true" to skip OSS Sentinel scenarios
 
@@ -27,8 +27,8 @@ cd "${REPO_ROOT}"
 export BASELINE_DURATION="${BASELINE_DURATION:-120}"
 export WARMUP_DURATION="${WARMUP_DURATION:-60}"
 export POST_RECOVERY_DURATION="${POST_RECOVERY_DURATION:-60}"
-export LOCUST_USERS="${LOCUST_USERS:-10}"
-export LOCUST_SPAWN_RATE="${LOCUST_SPAWN_RATE:-2}"
+export LOCUST_USERS="${LOCUST_USERS:-50}"
+export LOCUST_SPAWN_RATE="${LOCUST_SPAWN_RATE:-10}"
 export LOCUST_FILE="${LOCUST_FILE:-workloads/locustfiles/cache_read_heavy.py}"
 SKIP_RE="${SKIP_RE:-false}"
 SKIP_OSS="${SKIP_OSS:-false}"
@@ -83,6 +83,19 @@ wait_for_healthy_redis() {
         fi
     done
     ok "Redis on ${container} is responding"
+}
+
+wait_for_healthy_re() {
+    local timeout="${1:-120}" elapsed=0
+    info "Waiting for RE database PING on re-node1:12000..."
+    while ! docker exec re-node1 redis-cli -p 12000 PING 2>/dev/null | grep -q PONG; do
+        sleep 2; elapsed=$((elapsed + 2))
+        if [[ $elapsed -ge $timeout ]]; then
+            warn "RE database on re-node1:12000 not ready after ${timeout}s"
+            return 1
+        fi
+    done
+    ok "RE database on re-node1:12000 is responding"
 }
 
 re_image_available() {
@@ -158,12 +171,21 @@ if [[ "${SKIP_RE}" != "true" ]]; then
         info "RE cluster already running — skipping startup"
     else
         info "Starting Redis Enterprise cluster..."
+        # Clean volumes to avoid stale state from previous runs.
+        docker compose -f infra/docker/re-cluster/docker-compose.yml -p re-cluster down -v >> "${LOG_FILE}" 2>&1 || true
         make re-up >> "${LOG_FILE}" 2>&1
         STACKS_STARTED="${STACKS_STARTED} re"
         info "Waiting for RE nodes to boot (30s)..."
         sleep 30
     fi
-    wait_for_healthy_redis "re-node1" 120 || { warn "RE node1 not responding — skipping RE"; SKIP_RE="true"; }
+    info "Bootstrapping RE cluster..."
+    bash infra/docker/re-cluster/bootstrap.sh >> "${LOG_FILE}" 2>&1 || {
+        warn "RE bootstrap failed — skipping RE"
+        SKIP_RE="true"
+    }
+    if [[ "${SKIP_RE}" != "true" ]]; then
+        wait_for_healthy_re 120 || { warn "RE database not responding — skipping RE"; SKIP_RE="true"; }
+    fi
 fi
 
 if [[ "${SKIP_RE}" == "true" ]] && [[ "${SKIP_OSS}" == "true" ]]; then
@@ -183,6 +205,7 @@ if [[ "${SKIP_RE}" != "true" ]]; then
     PLATFORM="re" \
     PRIMARY_CONTAINER="re-node1" \
     LOCUST_HOST="redis://localhost:12000" \
+    REDIS_CLI_PORT="12000" \
         run_scenario "scenarios/scripts/01_baseline.sh" "Baseline (RE)" || true
     BASELINE_RE_DIR="$(find_run_dir "01_baseline_re_")"
 fi
@@ -190,7 +213,7 @@ fi
 if [[ "${SKIP_OSS}" != "true" ]]; then
     PLATFORM="oss-sentinel" \
     PRIMARY_CONTAINER="redis-primary" \
-    LOCUST_HOST="redis://localhost:6379" \
+    LOCUST_HOST="redis://localhost:6380" \
         run_scenario "scenarios/scripts/01_baseline.sh" "Baseline (OSS Sentinel)" || true
     BASELINE_OSS_DIR="$(find_run_dir "01_baseline_oss-sentinel_")"
 fi
@@ -208,6 +231,7 @@ if [[ "${SKIP_RE}" != "true" ]]; then
     CANARY_HOST="localhost" \
     CANARY_PORT="12000" \
     CANARY_MODE="standalone" \
+    REDIS_CLI_PORT="12000" \
         run_scenario "scenarios/scripts/02_primary_kill.sh" "Primary Kill (RE)" || true
     KILL_RE_DIR="$(find_run_dir "02_primary_kill_re_")"
 fi
@@ -215,9 +239,9 @@ fi
 if [[ "${SKIP_OSS}" != "true" ]]; then
     PLATFORM="oss-sentinel" \
     PRIMARY_CONTAINER="redis-primary" \
-    LOCUST_HOST="redis://localhost:6379" \
+    LOCUST_HOST="redis://localhost:6380" \
     CANARY_HOST="localhost" \
-    CANARY_PORT="6379" \
+    CANARY_PORT="6380" \
     CANARY_MODE="standalone" \
         run_scenario "scenarios/scripts/02_primary_kill.sh" "Primary Kill (OSS Sentinel)" || true
     KILL_OSS_DIR="$(find_run_dir "02_primary_kill_oss-sentinel_")"

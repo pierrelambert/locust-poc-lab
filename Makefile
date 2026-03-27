@@ -50,6 +50,9 @@ clean: ## Remove caches and temporary files
 re-up: ## Start Redis Enterprise 3-node cluster
 	$(COMPOSE) -f infra/docker/re-cluster/docker-compose.yml -p re-cluster up -d
 
+re-bootstrap: ## Bootstrap RE cluster (create cluster + join nodes + create database)
+	bash infra/docker/re-cluster/bootstrap.sh
+
 re-down: ## Stop Redis Enterprise cluster and remove containers
 	$(COMPOSE) -f infra/docker/re-cluster/docker-compose.yml -p re-cluster down
 

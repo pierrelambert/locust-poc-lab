@@ -34,3 +34,6 @@ __pycache__/
 # Results (run-specific output)
 results/
 !results/.gitkeep
+!examples/results/
+examples/results/*
+!examples/results/sample_results_report.html

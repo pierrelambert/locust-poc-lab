@@ -21,7 +21,7 @@ services:
     container_name: redis-primary
     hostname: redis-primary
     ports:
-      - "6379:6379"
+      - "6380:6379"
     deploy:
       resources:
         limits:
