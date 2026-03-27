@@ -4,7 +4,7 @@
 .PHONY: oss-sentinel-up oss-sentinel-down oss-sentinel-status
 .PHONY: oss-cluster-up oss-cluster-down oss-cluster-status
 .PHONY: vm-up vm-down vm-status
-.PHONY: k3d-up k3d-down
+.PHONY: k3d-up k3d-down gke-up gke-down gke-status
 .PHONY: k8s-re-up k8s-re-down k8s-re-status
 .PHONY: k8s-oss-up k8s-oss-down k8s-oss-status
 .PHONY: k8s-up k8s-down k8s-status
@@ -93,9 +93,23 @@ k3d-up: ## Create k3d cluster for k8s comparison paths
 k3d-down: ## Delete k3d cluster
 	@bash infra/scripts/k3d-setup.sh delete
 
+gke-up: ## Create a GKE practice cluster for k8s comparison paths
+	@bash infra/scripts/gke-setup.sh create
+
+gke-down: ## Delete the GKE practice cluster
+	@bash infra/scripts/gke-setup.sh delete
+
+gke-status: ## Show GKE practice cluster status
+	@bash infra/scripts/gke-setup.sh status
+
 # ── Redis Enterprise Operator on k8s (Architecture #2) ────────────
 k8s-re-up: ## Deploy Redis Enterprise Operator + cluster + database on k8s
 	kubectl apply -f infra/k8s/re-operator/namespace.yaml
+	@CURRENT_CONTEXT="$$(kubectl config current-context 2>/dev/null || true)"; \
+	if echo "$$CURRENT_CONTEXT" | grep -q '^gke_'; then \
+		echo "Detected GKE context ($$CURRENT_CONTEXT). If the next apply fails with RBAC/forbidden, bootstrap Kubernetes RBAC once with:"; \
+		echo "  kubectl create clusterrolebinding gke-cluster-admin-binding --clusterrole=cluster-admin --user=\"$$(gcloud config get-value account 2>/dev/null)\""; \
+	fi
 	@echo "Installing Redis Enterprise Operator bundle $(RE_OPERATOR_VERSION)..."
 	kubectl apply -f $(RE_OPERATOR_BUNDLE) -n $(RE_NAMESPACE)
 	@echo "Waiting for operator to be ready..."
