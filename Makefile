@@ -105,11 +105,6 @@ gke-status: ## Show GKE practice cluster status
 # ── Redis Enterprise Operator on k8s (Architecture #2) ────────────
 k8s-re-up: ## Deploy Redis Enterprise Operator + cluster + database on k8s
 	kubectl apply -f infra/k8s/re-operator/namespace.yaml
-	@CURRENT_CONTEXT="$$(kubectl config current-context 2>/dev/null || true)"; \
-	if echo "$$CURRENT_CONTEXT" | grep -q '^gke_'; then \
-		echo "Detected GKE context ($$CURRENT_CONTEXT). If the next apply fails with RBAC/forbidden, bootstrap Kubernetes RBAC once with:"; \
-		echo "  kubectl create clusterrolebinding gke-cluster-admin-binding --clusterrole=cluster-admin --user=\"$$(gcloud config get-value account 2>/dev/null)\""; \
-	fi
 	@echo "Installing Redis Enterprise Operator bundle $(RE_OPERATOR_VERSION)..."
 	kubectl apply -f $(RE_OPERATOR_BUNDLE) -n $(RE_NAMESPACE)
 	@echo "Waiting for operator to be ready..."
