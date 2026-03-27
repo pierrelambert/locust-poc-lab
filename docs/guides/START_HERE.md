@@ -24,6 +24,12 @@ Deploy Redis Enterprise Operator and OSS Redis on a local k3d cluster, then run 
 - **Platforms:** Redis Enterprise Operator vs OSS Redis + Sentinel on k8s
 - **Scenarios:** Steady-state baseline, primary pod kill
 
+**[GKE Deployment Guide](GKE_DEPLOYMENT_GUIDE.md)** — Quick deploy plus step-by-step walkthrough for running the same k8s path on Google Kubernetes Engine.
+
+- **Prerequisites:** `gcloud`, `kubectl`, Python 3.10+, active Google Cloud project
+- **Platforms:** Redis Enterprise Operator vs OSS Redis + Sentinel on GKE
+- **Scenarios:** Steady-state baseline, primary pod kill
+
 ### Bare-Metal / VMs
 
 **[VM Comparison Lab](VM_COMPARISON_LAB.md)** — 90-minute comparison lab on dedicated VMs.

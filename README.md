@@ -61,7 +61,7 @@ For Kubernetes paths, you also need `k3d` and `kubectl`.
 
 After running `make demo`, the lab generates a polished, Redis-branded HTML results report. Open the [sample report](examples/results/sample_results_report.html) in your browser to preview.
 
-![Results Report Screenshot](docs/report_screenshot.png)
+![Results Report Screenshot](docs/locust-redis-report.png)
 
 The report includes:
 

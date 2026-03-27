@@ -91,7 +91,7 @@ if [[ -f "$MAKEFILE" ]]; then
         oss-sentinel-up oss-sentinel-down oss-sentinel-status
         oss-cluster-up oss-cluster-down oss-cluster-status
         vm-up vm-down vm-status
-        k3d-up k3d-down
+        k3d-up k3d-down gke-up gke-down gke-status
         k8s-re-up k8s-re-down k8s-re-status
         k8s-oss-up k8s-oss-down k8s-oss-status
         k8s-up k8s-down k8s-status
