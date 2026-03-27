@@ -113,6 +113,18 @@ configure_kubectl() {
         --project "${PROJECT_ID}"
 }
 
+print_rbac_hint_if_needed() {
+    local can_create_clusterroles
+    can_create_clusterroles="$(kubectl auth can-i create clusterroles 2>/dev/null || true)"
+    if [[ "${can_create_clusterroles}" == "yes" ]]; then
+        return 0
+    fi
+
+    log "Current user may lack Kubernetes RBAC needed to install the RE operator bundle on GKE."
+    log "If k8s-re-up fails with RBAC/forbidden, run this once and retry:"
+    log "  kubectl create clusterrolebinding gke-cluster-admin-binding --clusterrole=cluster-admin --user=\"${ACTIVE_ACCOUNT}\""
+}
+
 create_namespaces() {
     log "Creating namespaces for lab workloads..."
     kubectl create namespace redis-enterprise --dry-run=client -o yaml | kubectl apply -f -
@@ -138,11 +150,13 @@ create_cluster() {
         --network "${GKE_NETWORK}" \
         --subnetwork "${GKE_SUBNETWORK}" \
         --enable-ip-alias \
+        --enable-network-policy \
         --enable-autorepair \
         --enable-autoupgrade \
         --quiet
 
     configure_kubectl
+    print_rbac_hint_if_needed
     log "Waiting for nodes to be ready..."
     kubectl wait --for=condition=Ready nodes --all --timeout=300s
     create_namespaces
