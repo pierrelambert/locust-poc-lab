@@ -9,18 +9,18 @@ Pick the path that matches your situation, then follow the linked guide.
 ## Which path is right for you?
 
 ```
-┌─────────────────────────────────────────────┐
-│           What are you trying to do?        │
-└──────────────────┬──────────────────────────┘
-                   │
-        ┌──────────┼──────────────┐
-        ▼          ▼              ▼
-   Quick demo   K8s demo    Customer POC
-   on laptop    on laptop   on dedicated VM
-        │          │              │
-        ▼          ▼              ▼
-  FIRST_30_MIN  K8s path     Full guided
-  (Docker)      (k3d)        lab on VM
+┌─────────────────────────────────────────────────────────────┐
+│                What are you trying to do?                  │
+└───────────────────────┬─────────────────────────────────────┘
+                        │
+      ┌─────────────────┼───────────────┬────────────────┐
+      ▼                 ▼               ▼                ▼
+ Quick demo         K8s demo        Customer POC      K8s demo
+ on laptop          on laptop       on dedicated VM   on GKE
+      │                 │               │                │
+      ▼                 ▼               ▼                ▼
+ FIRST_30_MIN       K8s path        Full guided       GKE practice
+ (Docker)           (k3d)           lab on VM         environment
 ```
 
 ### Path A — Quick Demo on Your Laptop (Docker)
@@ -73,6 +73,21 @@ Pick the path that matches your situation, then follow the linked guide.
 
 ---
 
+> **Note:** For GCE VM-based demos, Path C already works — just provision a GCE VM that meets the same sizing requirements and follow the same guided lab.
+
+### Path D — GKE Practice Environment
+
+**Best for:** Practicing the Kubernetes comparison flow on managed GKE instead of k3d or a customer cluster.**Time:** ~60–90 minutes plus cluster provisioning.**What you'll do:** Create a GKE practice cluster, configure `kubectl`, deploy the Redis Enterprise Operator and OSS Redis paths, then run the guided comparison flow.
+
+| Prerequisite | How to verify |
+| --- | --- |
+| Everything from Path A | See above |
+| gcloud CLI installed | gcloud version |
+| GCP project with billing enabled | gcloud config get-value project, then confirm billing is enabled for that project in GCP |
+| kubectl installed | kubectl version --client |
+
+👉 **Go to **[**docs/guides/GKE_DEPLOYMENT_GUIDE.md**](docs/guides/GKE_DEPLOYMENT_GUIDE.md) (use `make gke-up` to create the cluster, `make gke-status` to verify it, and `make gke-down` when finished)
+
 ## Quick Setup (all paths)
 
 ```bash
@@ -96,6 +111,7 @@ make help           # Show all available Makefile targets
 
 - [FIRST_30_MINUTES.md](FIRST_30_MINUTES.md) — Hands-on quickstart (30 min)
 - [docs/guides/SA_GUIDED_LAB.md](docs/guides/SA_GUIDED_LAB.md) — Full 90-minute guided lab
+- [docs/guides/GKE_DEPLOYMENT_GUIDE.md](docs/guides/GKE_DEPLOYMENT_GUIDE.md) — GKE practice environment setup and deployment flow
 - [docs/guides/TROUBLESHOOTING.md](docs/guides/TROUBLESHOOTING.md) — Common issues and fixes
 - [docs/templates/POC_SCORECARD_TEMPLATE.md](docs/templates/POC_SCORECARD_TEMPLATE.md) — Scorecard template
 - [docs/templates/POC_CHARTER_TEMPLATE.md](docs/templates/POC_CHARTER_TEMPLATE.md) — POC charter template
